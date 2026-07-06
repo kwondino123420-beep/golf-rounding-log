@@ -414,7 +414,7 @@ function renderCourses(){
       <h2 style="margin:0;">내 코스 목록</h2>
       <button class="btn sm" data-act="newCourse">+ 코스 추가</button>
     </div>
-    <p class="muted" style="margin-top:6px;">골프장/코스별 홀 순서와 파 정보를 저장해두면 라운드마다 다시 입력할 필요가 없어요.</p>
+    <p class="muted" style="margin-top:6px;">골프장/코스별 홀 순서와 파 정보를 저장해두면 라운드마다 다시 입력할 필요가 없어요. 동반자가 공유한 라운드를 불러오면 그 코스도 자동으로 이 목록에 추가돼요.</p>
   </div>
   <div class="card">
     ${courses.length===0 ? `<div class="empty">저장된 코스가 없습니다.</div>` :
@@ -858,6 +858,24 @@ function onFinishRound(){
   render();
 }
 
+function courseSignature(course){
+  return course.name.trim() + "|" + course.holes.map(h=>h.par).join(",");
+}
+
+function addCourseToLibraryIfNew(courseSnapshot){
+  const sig = courseSignature(courseSnapshot);
+  const exists = courses.some(c=>courseSignature(c)===sig);
+  if(exists) return false;
+  courses.push({
+    id: uid(),
+    name: courseSnapshot.name,
+    createdAt: Date.now(),
+    holes: JSON.parse(JSON.stringify(courseSnapshot.holes))
+  });
+  persistCourses();
+  return true;
+}
+
 function onConfirmImport(){
   const incoming = state.modal.round;
   const copy = JSON.parse(JSON.stringify(incoming));
@@ -865,11 +883,12 @@ function onConfirmImport(){
   copy.updatedAt = Date.now();
   rounds.push(copy);
   persistRounds();
+  const addedCourse = addCourseToLibraryIfNew(copy.courseSnapshot);
   state.modal = null;
   state.activeRoundId = copy.finished ? null : copy.id;
   state.viewingRoundId = copy.finished ? copy.id : null;
   state.view = copy.finished ? "roundDetail" : "round";
-  toast("라운드를 불러왔습니다");
+  toast(addedCourse ? "라운드를 불러왔습니다 · 새 코스가 내 코스 목록에 저장되었습니다" : "라운드를 불러왔습니다");
   render();
 }
 
@@ -878,6 +897,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 function escapeAttr(s){ return escapeHtml(s); }
 
 /* ---------- init ---------- */
+window.addEventListener("hashchange", ()=>{ checkIncomingShare(); render(); });
 checkIncomingShare();
 render();
 
