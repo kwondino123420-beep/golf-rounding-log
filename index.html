@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>라운딩 로그 · 골프 스코어 트래커</title>
+<style>
+  :root{
+    --green:#1f6f43;
+    --green-dark:#154f30;
+    --green-light:#e8f5ec;
+    --bg:#f4f6f5;
+    --card:#ffffff;
+    --text:#1c2621;
+    --muted:#6b7a72;
+    --border:#dfe6e2;
+    --red:#c74848;
+    --blue:#3468c0;
+    --amber:#b8860b;
+    --radius:14px;
+    --shadow:0 1px 3px rgba(20,40,30,0.08), 0 1px 2px rgba(20,40,30,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-tap-highlight-color:transparent;
+  }
+  #app{max-width:720px;margin:0 auto;padding:0 0 60px;min-height:100vh;background:var(--bg);}
+  a{color:inherit;}
+
+  /* top bar */
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:var(--green);color:#fff;
+    padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+    box-shadow:var(--shadow);
+  }
+  .topbar .brand{font-weight:700;font-size:17px;letter-spacing:.2px;display:flex;align-items:center;gap:8px;}
+  .topbar .brand .dot{width:8px;height:8px;border-radius:50%;background:#8fe3b0;}
+  .topbar button{
+    background:rgba(255,255,255,0.14);color:#fff;border:none;border-radius:8px;
+    padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .topbar button:active{background:rgba(255,255,255,0.28);}
+
+  .tabs{
+    display:flex;gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border);
+    position:sticky;top:52px;z-index:19;overflow-x:auto;
+  }
+  .tab{
+    flex:1;text-align:center;padding:9px 6px;border-radius:10px;font-size:13px;font-weight:600;
+    color:var(--muted);cursor:pointer;white-space:nowrap;
+  }
+  .tab.active{background:var(--green-light);color:var(--green-dark);}
+
+  .view{padding:16px;}
+  .card{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:16px;margin-bottom:14px;border:1px solid var(--border);
+  }
+  .card h2{margin:0 0 4px;font-size:16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--muted);font-weight:600;}
+  .muted{color:var(--muted);font-size:13px;}
+  .row{display:flex;gap:10px;align-items:center;}
+  .row.between{justify-content:space-between;}
+  .row.wrap{flex-wrap:wrap;}
+  .grow{flex:1;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--green);color:#fff;border:none;border-radius:10px;
+    padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;
+  }
+  .btn:active{background:var(--green-dark);}
+  .btn.secondary{background:#fff;color:var(--green-dark);border:1.5px solid var(--green);}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  .btn.danger{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .btn.block{width:100%;}
+  .btn.sm{padding:7px 10px;font-size:12.5px;border-radius:8px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  input[type=text],input[type=number],select{
+    width:100%;padding:10px 11px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:14px;background:#fff;color:var(--text);
+  }
+  input:focus,select:focus{outline:2px solid var(--green);outline-offset:1px;}
+  label{font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
+  .field{margin-bottom:10px;}
+
+  .empty{
+    text-align:center;padding:34px 16px;color:var(--muted);
+  }
+  .empty .big{font-size:32px;margin-bottom:8px;}
+
+  .list-item{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 4px;border-bottom:1px solid var(--border);
+  }
+  .list-item:last-child{border-bottom:none;}
+  .list-item .name{font-weight:700;font-size:14.5px;}
+  .list-item .meta{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  .pill{
+    display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;
+    background:var(--green-light);color:var(--green-dark);
+  }
+  .pill.over{background:#fdeaea;color:var(--red);}
+  .pill.under{background:#e9f0fd;color:var(--blue);}
+
+  /* course editor */
+  .hole-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px;}
+  .hole-cell{text-align:center;}
+  .hole-cell .hn{font-size:10.5px;color:var(--muted);margin-bottom:3px;}
+  .hole-cell select{padding:6px 2px;font-size:13px;text-align:center;}
+  .par-sum{font-size:13px;color:var(--green-dark);font-weight:700;}
+
+  /* round view */
+  .hole-hero{
+    background:linear-gradient(135deg,var(--green),var(--green-dark));
+    color:#fff;border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:14px;
+    box-shadow:var(--shadow);
+  }
+  .hole-hero .label{font-size:12px;opacity:.85;letter-spacing:1px;text-transform:uppercase;}
+  .hole-hero .num{font-size:44px;font-weight:800;line-height:1.1;}
+  .hole-hero .par{font-size:15px;opacity:.9;margin-top:2px;}
+  .hole-nav{display:flex;gap:8px;margin-top:14px;}
+  .hole-nav .btn{flex:1;background:rgba(255,255,255,0.16);}
+  .hole-nav .btn:active{background:rgba(255,255,255,0.3);}
+
+  .hole-strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;}
+  .hole-chip{
+    min-width:38px;height:38px;border-radius:9px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-size:10.5px;font-weight:700;
+    background:#fff;border:1.5px solid var(--border);color:var(--muted);flex-shrink:0;cursor:pointer;
+  }
+  .hole-chip .n{font-size:9.5px;font-weight:600;opacity:.7;}
+  .hole-chip.current{border-color:var(--green);color:var(--green-dark);background:var(--green-light);}
+  .hole-chip.filled{background:var(--green-dark);color:#fff;border-color:var(--green-dark);}
+
+  .player-card{border:1.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
+  .player-card .pname{font-weight:700;font-size:14.5px;}
+  .player-card .stat-row{display:flex;gap:14px;margin:8px 0;font-size:12.5px;color:var(--muted);flex-wrap:wrap;}
+  .player-card .stat-row b{color:var(--text);}
+  .guidance{
+    font-size:12.5px;background:var(--green-light);color:var(--green-dark);
+    border-radius:8px;padding:7px 10px;margin-bottom:9px;font-weight:600;line-height:1.4;
+  }
+  .guidance.warn{background:#fdeaea;color:var(--red);}
+  .score-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .score-pill{
+    padding:8px 0;width:44px;text-align:center;border-radius:9px;border:1.5px solid var(--border);
+    font-size:13px;font-weight:700;background:#fff;cursor:pointer;color:var(--text);
+  }
+  .score-pill.selected{background:var(--green);color:#fff;border-color:var(--green);}
+  .manual-input{display:flex;gap:8px;align-items:center;}
+  .manual-input input{width:80px;flex:none;}
+
+  table.scorecard{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
+  table.scorecard th,table.scorecard td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--border);}
+  table.scorecard th{color:var(--muted);font-weight:600;font-size:10.5px;}
+  table.scorecard td.pname{text-align:left;font-weight:700;position:sticky;left:0;background:#fff;}
+  .scroll-x{overflow-x:auto;}
+  .score-birdie{color:var(--blue);font-weight:800;}
+  .score-bogey{color:var(--red);font-weight:800;}
+  .score-par{color:var(--text);font-weight:600;}
+
+  .share-box{display:flex;gap:8px;margin-top:8px;}
+  .share-box input{flex:1;font-size:12px;color:var(--muted);}
+
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--green-dark);color:#fff;padding:10px 18px;border-radius:999px;
+    font-size:13px;font-weight:600;box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(15,25,20,0.5);z-index:50;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .modal{
+    background:#fff;border-radius:16px 16px 0 0;padding:18px 16px 24px;width:100%;max-width:720px;
+    max-height:88vh;overflow-y:auto;
+  }
+  @media(min-width:600px){
+    .modal-backdrop{align-items:center;}
+    .modal{border-radius:16px;max-width:480px;}
+  }
+  .modal h3{margin:0 0 12px;font-size:16px;}
+  .close-x{float:right;background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;}
+
+  .leader-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .leader-table th,.leader-table td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border);}
+  .leader-table th{color:var(--muted);font-size:11px;font-weight:600;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- storage ---------- */
+const LS_COURSES = "grl_courses";
+const LS_ROUNDS  = "grl_rounds";
+
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : ("id-"+Date.now()+"-"+Math.random().toString(16).slice(2))); }
+function loadJSON(key, fallback){
+  try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+let courses = loadJSON(LS_COURSES, []);
+let rounds  = loadJSON(LS_ROUNDS, []);
+
+function persistCourses(){ saveJSON(LS_COURSES, courses); }
+function persistRounds(){ saveJSON(LS_ROUNDS, rounds); }
+
+/* seed sample course on first run */
+if(courses.length === 0){
+  courses.push(makeCourse("샘플 컨트리클럽 (파72)", [4,4,3,5,4,4,3,5,4, 4,4,3,5,4,4,3,5,4]));
+  persistCourses();
+}
+
+function makeCourse(name, pars){
+  return {
+    id: uid(),
+    name: name,
+    createdAt: Date.now(),
+    holes: pars.map((p,i)=>({ number: i+1, par: p }))
+  };
+}
+function coursePar(course){ return course.holes.reduce((s,h)=>s+h.par,0); }
+
+/* ---------- app state ---------- */
+let state = {
+  view: "home",      // home | courses | courseEdit | newRound | round | history | roundDetail
+  editingCourseId: null,
+  activeRoundId: null,
+  viewingRoundId: null,
+  modal: null        // {type:'import', data:...} etc
+};
+
+/* ---------- toast ---------- */
+let toastTimer=null;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), 2200);
+}
+
+/* ---------- round scoring helpers ---------- */
+// target: { mode: 'toPar' | 'total', value: number }
+function targetTotalStrokes(round, player){
+  const par = coursePar(round.courseSnapshot);
+  if(player.targetMode === "total") return player.targetValue;
+  return par + player.targetValue; // toPar
+}
+function playerScores(round, playerId){ return round.scores[playerId] || {}; }
+
+function computeStats(round, player){
+  const holes = round.courseSnapshot.holes;
+  const scores = playerScores(round, player.id);
+  let played = 0, strokeSum = 0, parSumPlayed = 0;
+  holes.forEach(h=>{
+    const s = scores[h.number];
+    if(s != null){ played++; strokeSum += s; parSumPlayed += h.par; }
+  });
+  const totalPar = coursePar(round.courseSnapshot);
+  const target = targetTotalStrokes(round, player);
+  const remainingHoles = holes.length - played;
+  const remainingBudget = target - strokeSum;
+  const remainingParSum = holes.reduce((s,h)=> scores[h.number]==null ? s+h.par : s, 0);
+  const remainingToParAllowed = remainingBudget - remainingParSum;
+  return {
+    played, strokeSum, parSumPlayed, totalPar, target,
+    toParSoFar: strokeSum - parSumPlayed,
+    remainingHoles, remainingBudget, remainingParSum, remainingToParAllowed,
+    onPace: remainingHoles===0 ? (strokeSum<=target) : (remainingToParAllowed >= 0)
+  };
+}
+
+function currentHoleGuidance(round, player){
+  const stats = computeStats(round, player);
+  const curHole = round.courseSnapshot.holes.find(h=>h.number===round.currentHole);
+  if(!curHole) return null;
+  if(stats.remainingHoles === 0){
+    return { text: `18홀 완료 · 최종 ${stats.strokeSum}타 (파 대비 ${fmtPm(stats.toParSoFar)})`, warn: stats.strokeSum > stats.target };
+  }
+  const avgAllowed = stats.remainingBudget / stats.remainingHoles;
+  const recommended = Math.max(curHole.par - 2, Math.round(curHole.par + (stats.remainingToParAllowed / stats.remainingHoles)));
+  const warn = stats.remainingToParAllowed < 0;
+  const text = `이번 홀(파${curHole.par}) 권장 ${recommended}타 이내 · 남은 ${stats.remainingHoles}홀 평균 ${avgAllowed.toFixed(1)}타 여유`
+    + (warn ? ` · 목표(${stats.target}타) 대비 파플레이로도 ${Math.abs(stats.remainingToParAllowed)}타 초과` : ` · 목표(${stats.target}타) 대비 ${fmtPm(-stats.remainingToParAllowed)}홀 여유`);
+  return { text, warn, recommended };
+}
+
+function fmtPm(n){
+  n = Math.round(n*10)/10;
+  if(n === 0) return "E";
+  return (n>0?"+":"") + n;
+}
+
+/* ---------- share link (encode round in URL hash) ---------- */
+function encodeRoundForShare(round){
+  const json = JSON.stringify(round);
+  return btoa(unescape(encodeURIComponent(json)));
+}
+function decodeRoundFromShare(b64){
+  const json = decodeURIComponent(escape(atob(b64)));
+  return JSON.parse(json);
+}
+function buildShareUrl(round){
+  const base = location.href.split("#")[0];
+  return base + "#r=" + encodeRoundForShare(round);
+}
+
+function checkIncomingShare(){
+  const h = location.hash;
+  if(h && h.startsWith("#r=")){
+    try{
+      const incoming = decodeRoundFromShare(h.slice(3));
+      state.modal = { type:"import", round: incoming };
+      history.replaceState(null, "", location.pathname); // clear hash
+    }catch(e){ /* ignore malformed */ }
+  }
+}
+
+/* ---------- rendering ---------- */
+const app = document.getElementById("app");
+
+function render(){
+  let html = renderTopbar() + renderTabs() + '<div class="view">';
+  switch(state.view){
+    case "home": html += renderHome(); break;
+    case "courses": html += renderCourses(); break;
+    case "courseEdit": html += renderCourseEdit(); break;
+    case "newRound": html += renderNewRound(); break;
+    case "round": html += renderRound(); break;
+    case "history": html += renderHistory(); break;
+    case "roundDetail": html += renderRoundDetail(); break;
+  }
+  html += '</div>';
+  app.innerHTML = html;
+  if(state.modal) renderModal();
+  bindEvents();
+}
+
+function renderTopbar(){
+  return `<div class="topbar">
+    <div class="brand"><span class="dot"></span> 라운딩 로그</div>
+    ${state.activeRoundId ? '<button data-act="gotoRound">진행중 라운드</button>' : ''}
+  </div>`;
+}
+
+function renderTabs(){
+  const tabs = [["home","홈"],["courses","코스"],["newRound","새 라운드"],["history","기록"]];
+  return `<div class="tabs">` + tabs.map(([v,label])=>
+    `<div class="tab ${state.view===v?"active":""}" data-act="nav" data-view="${v}">${label}</div>`
+  ).join("") + `</div>`;
+}
+
+function renderHome(){
+  const active = rounds.filter(r=>!r.finished).sort((a,b)=>b.updatedAt-a.updatedAt);
+  const recent = rounds.filter(r=>r.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
+  return `
+  <div class="card">
+    <h2>안녕하세요 ⛳</h2>
+    <p class="muted">코스별 파 정보를 기억하고, 홀마다 목표 타수를 안내받고, 동반자와 링크로 스코어 누계를 공유하세요.</p>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn grow" data-act="nav" data-view="newRound">새 라운드 시작</button>
+      <button class="btn secondary grow" data-act="nav" data-view="courses">코스 관리</button>
+    </div>
+  </div>
+  ${active.length ? `<div class="card">
+    <h3>진행중 라운드</h3>
+    ${active.map(r=>renderRoundListItem(r)).join("")}
+  </div>` : ""}
+  ${recent.length ? `<div class="card">
+    <h3>최근 완료 라운드</h3>
+    ${recent.map(r=>renderRoundListItem(r)).join("")}
+  </div>` : ""}
+  ${(!active.length && !recent.length) ? `<div class="card empty">
+    <div class="big">🏌️</div>
+    <div>아직 기록된 라운드가 없어요.<br>새 라운드를 시작해보세요.</div>
+  </div>` : ""}
+  `;
+}
+
+function renderRoundListItem(r){
+  const d = new Date(r.createdAt);
+  return `<div class="list-item" data-act="openRoundFromList" data-id="${r.id}" style="cursor:pointer;">
+    <div>
+      <div class="name">${escapeHtml(r.name)}</div>
+      <div class="meta">${d.getMonth()+1}/${d.getDate()} · 참가자 ${r.players.length}명 · ${r.finished ? "완료" : "홀 "+r.currentHole+" 진행중"}</div>
+    </div>
+    <span class="pill">${r.finished ? "보기" : "이어하기"}</span>
+  </div>`;
+}
+
+function renderCourses(){
+  return `
+  <div class="card">
+    <div class="row between">
+      <h2 style="margin:0;">내 코스 목록</h2>
+      <button class="btn sm" data-act="newCourse">+ 코스 추가</button>
+    </div>
+    <p class="muted" style="margin-top:6px;">골프장/코스별 홀 순서와 파 정보를 저장해두면 라운드마다 다시 입력할 필요가 없어요.</p>
+  </div>
+  <div class="card">
+    ${courses.length===0 ? `<div class="empty">저장된 코스가 없습니다.</div>` :
+      courses.map(c=>`
+      <div class="list-item">
+        <div>
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="meta">18홀 · 파 ${coursePar(c)}</div>
+        </div>
+        <div class="row">
+          <button class="btn ghost sm" data-act="editCourse" data-id="${c.id}">수정</button>
+          <button class="btn danger sm" data-act="deleteCourse" data-id="${c.id}">삭제</button>
+        </div>
+      </div>`).join("")
+    }
+  </div>`;
+}
+
+function renderCourseEdit(){
+  const editing = state.editingCourseId ? courses.find(c=>c.id===state.editingCourseId) : null;
+  const holes = editing ? editing.holes : Array.from({length:18},(_,i)=>({number:i+1, par:4}));
+  const name = editing ? editing.name : "";
+  const sum = holes.reduce((s,h)=>s+h.par,0);
+  return `
+  <div class="card">
+    <h2>${editing ? "코스 수정" : "새 코스 추가"}</h2>
+    <div class="field">
+      <label>코스 이름</label>
+      <input type="text" id="courseName" placeholder="예: OO 컨트리클럽 서코스" value="${escapeAttr(name)}">
+    </div>
+    <label>홀별 파(Par) 설정 <span class="par-sum" id="parSum">(합계 ${sum})</span></label>
+    <div class="hole-grid" id="holeGrid">
+      ${holes.map(h=>`
+        <div class="hole-cell">
+          <div class="hn">${h.number}번</div>
+          <select data-hole="${h.number}">
+            ${[3,4,5,6].map(p=>`<option value="${p}" ${p===h.par?"selected":""}>${p}</option>`).join("")}
+          </select>
+        </div>`).join("")}
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <button class="btn grow" data-act="saveCourse" data-id="${editing?editing.id:''}">저장</button>
+      <button class="btn ghost grow" data-act="nav" data-view="courses">취소</button>
+    </div>
+  </div>`;
+}
+
+function renderNewRound(){
+  if(courses.length===0){
+    return `<div class="card empty">먼저 코스를 등록해주세요.<br><br><button class="btn" data-act="newCourse">코스 추가하기</button></div>`;
+  }
+  return `
+  <div class="card">
+    <h2>새 라운드 시작</h2>
+    <div class="field">
+      <label>코스 선택</label>
+      <select id="courseSelect">
+        ${courses.map(c=>`<option value="${c.id}">${escapeHtml(c.name)} (파${coursePar(c)})</option>`).join("")}
+      </select>
+    </div>
+    <div class="field">
+      <label>라운드 이름</label>
+      <input type="text" id="roundName" placeholder="예: 7월 토요모임" value="${new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric'})} 라운드">
+    </div>
+    <label>참가자 &amp; 목표 타수</label>
+    <div id="playerRows">${renderPlayerRow(0)}</div>
+    <button class="btn ghost sm" data-act="addPlayerRow" style="margin-top:6px;">+ 참가자 추가</button>
+    <div class="row" style="margin-top:16px;">
+      <button class="btn block" data-act="startRound">라운드 시작</button>
+    </div>
+  </div>`;
+}
+
+let newRoundPlayerCount = 1;
+function renderPlayerRow(i){
+  return `<div class="row" style="margin-bottom:8px;" data-prow="${i}">
+    <input type="text" class="grow" placeholder="이름 ${i+1}" data-pname="${i}">
+    <select style="width:90px;" data-ptmode="${i}">
+      <option value="toPar">파 대비</option>
+      <option value="total">전체 타수</option>
+    </select>
+    <input type="number" style="width:70px;" placeholder="+18" data-ptval="${i}" value="18">
+  </div>`;
+}
+
+function renderRound(){
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  if(!round) return `<div class="card empty">진행중인 라운드가 없습니다.</div>`;
+  const holes = round.courseSnapshot.holes;
+  const curHole = holes.find(h=>h.number===round.currentHole);
+
+  const strip = holes.map(h=>{
+    const anyFilled = round.players.some(p=> playerScores(round,p.id)[h.number]!=null);
+    return `<div class="hole-chip ${h.number===round.currentHole?'current':''} ${anyFilled?'filled':''}" data-act="jumpHole" data-hole="${h.number}">
+      <div>${h.number}</div><div class="n">P${h.par}</div>
+    </div>`;
+  }).join("");
+
+  const playersHtml = round.players.map(p=>{
+    const scores = playerScores(round, p.id);
+    const curScore = scores[round.currentHole];
+    const g = currentHoleGuidance(round, p);
+    const stats = computeStats(round, p);
+    const pillOptions = [curHole.par-2, curHole.par-1, curHole.par, curHole.par+1, curHole.par+2, curHole.par+3].filter(v=>v>=1);
+    return `<div class="player-card">
+      <div class="row between">
+        <div class="pname">${escapeHtml(p.name)}</div>
+        <span class="pill ${stats.toParSoFar>0?'over':stats.toParSoFar<0?'under':''}">${stats.played}홀 · ${stats.strokeSum}타 (${fmtPm(stats.toParSoFar)})</span>
+      </div>
+      <div class="stat-row">
+        <div>목표 <b>${stats.target}타</b> (${p.targetMode==='toPar' ? fmtPm(p.targetValue)+' 파대비':'전체타수'})</div>
+      </div>
+      ${g ? `<div class="guidance ${g.warn?'warn':''}">${g.text}</div>` : ""}
+      <div class="score-pills">
+        ${pillOptions.map(v=>`<div class="score-pill ${curScore===v?'selected':''}" data-act="setScore" data-pid="${p.id}" data-hole="${round.currentHole}" data-val="${v}">${v}</div>`).join("")}
+      </div>
+      <div class="manual-input">
+        <input type="number" min="1" max="15" placeholder="직접입력" value="${curScore!=null?curScore:''}" data-act="setScoreManual" data-pid="${p.id}" data-hole="${round.currentHole}">
+        <span class="muted">타</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+  <div class="hole-hero">
+    <div class="label">${escapeHtml(round.courseSnapshot.name)}</div>
+    <div class="num">HOLE ${round.currentHole}</div>
+    <div class="par">PAR ${curHole.par}</div>
+    <div class="hole-nav">
+      <button class="btn" data-act="prevHole" ${round.currentHole<=1?'disabled':''}>← 이전 홀</button>
+      <button class="btn" data-act="nextHole" ${round.currentHole>=18?'disabled':''}>다음 홀 →</button>
+    </div>
+  </div>
+  <div class="hole-strip">${strip}</div>
+  ${playersHtml}
+  <div class="card">
+    <h3>스코어카드 누계</h3>
+    <div class="scroll-x">${renderScorecardTable(round)}</div>
+  </div>
+  <div class="card">
+    <h3>동반자와 공유하기</h3>
+    <p class="muted">링크를 전달하면 상대방이 현재까지의 스코어카드를 그대로 불러와 이어서 기록할 수 있어요. (실시간 동기화가 아니라, 갱신할 때마다 새 링크를 다시 공유하는 방식입니다.)</p>
+    <button class="btn secondary block" data-act="shareRound">공유 링크 만들기</button>
+  </div>
+  <div class="row">
+    <button class="btn danger grow" data-act="finishRound">라운드 종료</button>
+  </div>
+  `;
+}
+
+function renderScorecardTable(round){
+  const holes = round.courseSnapshot.holes;
+  const out = holes.slice(0,9), inn = holes.slice(9,18);
+  const outPar = out.reduce((s,h)=>s+h.par,0), inPar = inn.reduce((s,h)=>s+h.par,0);
+  let head = `<tr><th class="pname">플레이어</th>${holes.map(h=>`<th>${h.number}</th>`).join("")}<th>OUT</th><th>IN</th><th>TOT</th><th>+/-</th></tr>`;
+  head += `<tr><th class="pname">PAR</th>${holes.map(h=>`<th>${h.par}</th>`).join("")}<th>${outPar}</th><th>${inPar}</th><th>${outPar+inPar}</th><th>-</th></tr>`;
+  const rows = round.players.map(p=>{
+    const scores = playerScores(round,p.id);
+    const cells = holes.map(h=>{
+      const s = scores[h.number];
+      if(s==null) return `<td>-</td>`;
+      const cls = s < h.par ? "score-birdie" : s > h.par ? "score-bogey" : "score-par";
+      return `<td class="${cls}">${s}</td>`;
+    }).join("");
+    const outSum = out.reduce((sum,h)=> scores[h.number]!=null ? sum+scores[h.number] : sum, 0);
+    const inSum = inn.reduce((sum,h)=> scores[h.number]!=null ? sum+scores[h.number] : sum, 0);
+    const stats = computeStats(round, p);
+    return `<tr><td class="pname">${escapeHtml(p.name)}</td>${cells}<td>${outSum||"-"}</td><td>${inSum||"-"}</td><td><b>${stats.strokeSum||"-"}</b></td><td>${stats.played?fmtPm(stats.toParSoFar):"-"}</td></tr>`;
+  }).join("");
+  return `<table class="scorecard">${head}${rows}</table>`;
+}
+
+function renderHistory(){
+  const finished = rounds.filter(r=>r.finished).sort((a,b)=>b.updatedAt-a.updatedAt);
+  const leaderboard = buildLeaderboard();
+  return `
+  <div class="card">
+    <h2>누계 리더보드</h2>
+    <p class="muted">완료된 라운드를 기준으로 참가자 이름별 누계를 집계합니다.</p>
+    ${leaderboard.length ? `<div class="scroll-x"><table class="leader-table">
+      <tr><th>이름</th><th>라운드</th><th>평균타수</th><th>평균 파대비</th><th>베스트</th></tr>
+      ${leaderboard.map(l=>`<tr><td><b>${escapeHtml(l.name)}</b></td><td>${l.rounds}</td><td>${l.avg.toFixed(1)}</td><td>${fmtPm(l.avgToPar)}</td><td>${l.best}</td></tr>`).join("")}
+    </table></div>` : `<div class="empty">완료된 라운드가 없습니다.</div>`}
+  </div>
+  <div class="card">
+    <h3>완료된 라운드</h3>
+    ${finished.length ? finished.map(r=>renderRoundListItem(r)).join("") : `<div class="empty">기록이 없습니다.</div>`}
+  </div>`;
+}
+
+function buildLeaderboard(){
+  const finished = rounds.filter(r=>r.finished);
+  const map = {};
+  finished.forEach(r=>{
+    r.players.forEach(p=>{
+      const stats = computeStats(r, p);
+      if(stats.played === 0) return;
+      const key = p.name.trim();
+      if(!map[key]) map[key] = { name:key, rounds:0, totalStrokes:0, totalToPar:0, best:Infinity };
+      map[key].rounds++;
+      map[key].totalStrokes += stats.strokeSum;
+      map[key].totalToPar += stats.toParSoFar;
+      map[key].best = Math.min(map[key].best, stats.strokeSum);
+    });
+  });
+  return Object.values(map).map(m=>({
+    name:m.name, rounds:m.rounds, avg:m.totalStrokes/m.rounds, avgToPar:m.totalToPar/m.rounds, best:m.best
+  })).sort((a,b)=>a.avg-b.avg);
+}
+
+function renderRoundDetail(){
+  const round = rounds.find(r=>r.id===state.viewingRoundId);
+  if(!round) return `<div class="card empty">라운드를 찾을 수 없습니다.</div>`;
+  return `
+  <div class="card">
+    <div class="row between">
+      <h2 style="margin:0;">${escapeHtml(round.name)}</h2>
+      ${!round.finished ? `<button class="btn sm" data-act="resumeRound" data-id="${round.id}">이어하기</button>` : ""}
+    </div>
+    <p class="muted">${escapeHtml(round.courseSnapshot.name)} · 파${coursePar(round.courseSnapshot)} · ${new Date(round.createdAt).toLocaleDateString('ko-KR')}</p>
+    <div class="scroll-x">${renderScorecardTable(round)}</div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn secondary block" data-act="shareRoundDetail" data-id="${round.id}">공유 링크 만들기</button>
+    </div>
+  </div>
+  <button class="btn ghost block" data-act="nav" data-view="history">목록으로</button>
+  `;
+}
+
+function renderModal(){
+  const m = state.modal;
+  let inner = "";
+  if(m.type === "import"){
+    const r = m.round;
+    inner = `
+      <button class="close-x" data-act="closeModal">&times;</button>
+      <h3>공유받은 라운드 불러오기</h3>
+      <p class="muted">${escapeHtml(r.name)} · ${escapeHtml(r.courseSnapshot.name)} · 참가자 ${r.players.map(p=>escapeHtml(p.name)).join(", ")}</p>
+      <p class="muted">불러오면 내 기기에 사본으로 저장되어 이어서 기록할 수 있어요. 갱신 후에는 새 공유 링크를 다시 전달해주세요.</p>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn block" data-act="confirmImport">불러오기</button>
+        <button class="btn ghost block" data-act="closeModal">취소</button>
+      </div>`;
+  } else if(m.type === "share"){
+    inner = `
+      <button class="close-x" data-act="closeModal">&times;</button>
+      <h3>공유 링크</h3>
+      <p class="muted">아래 링크를 동반자에게 보내면 현재 스코어카드를 그대로 확인/이어쓰기 할 수 있어요.</p>
+      <div class="share-box">
+        <input type="text" readonly value="${escapeAttr(m.url)}" id="shareUrlInput">
+        <button class="btn sm" data-act="copyShareUrl">복사</button>
+      </div>`;
+  }
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `<div class="modal">${inner}</div>`;
+  backdrop.addEventListener("click", (e)=>{ if(e.target === backdrop) closeModal(); });
+  app.appendChild(backdrop);
+}
+
+function closeModal(){ state.modal = null; render(); }
+
+/* ---------- events ---------- */
+function bindEvents(){
+  app.querySelectorAll("[data-act]").forEach(el=>{
+    const act = el.getAttribute("data-act");
+    if(el.tagName === "INPUT" && (act==="setScoreManual")){
+      el.addEventListener("change", onSetScoreManual);
+      return;
+    }
+    el.addEventListener("click", onAction);
+  });
+  const addBtn = app.querySelector('[data-act="addPlayerRow"]');
+  if(addBtn) addBtn.onclick = onAddPlayerRow;
+  const holeGrid = document.getElementById("holeGrid");
+  if(holeGrid) holeGrid.addEventListener("change", updateParSum);
+}
+
+function updateParSum(){
+  const sum = Array.from(document.querySelectorAll("#holeGrid select")).reduce((s,sel)=>s+parseInt(sel.value,10),0);
+  const el = document.getElementById("parSum");
+  if(el) el.textContent = `(합계 ${sum})`;
+}
+
+function onAction(e){
+  const el = e.currentTarget;
+  const act = el.getAttribute("data-act");
+  switch(act){
+    case "nav": state.view = el.getAttribute("data-view"); render(); break;
+    case "gotoRound": state.view = "round"; render(); break;
+    case "newCourse": state.editingCourseId = null; state.view = "courseEdit"; render(); break;
+    case "editCourse": state.editingCourseId = el.getAttribute("data-id"); state.view = "courseEdit"; render(); break;
+    case "deleteCourse": onDeleteCourse(el.getAttribute("data-id")); break;
+    case "saveCourse": onSaveCourse(el.getAttribute("data-id")); break;
+    case "startRound": onStartRound(); break;
+    case "openRoundFromList": onOpenRoundFromList(el.getAttribute("data-id")); break;
+    case "prevHole": onNavHole(-1); break;
+    case "nextHole": onNavHole(1); break;
+    case "jumpHole": onJumpHole(parseInt(el.getAttribute("data-hole"),10)); break;
+    case "setScore": onSetScore(el.getAttribute("data-pid"), parseInt(el.getAttribute("data-hole"),10), parseInt(el.getAttribute("data-val"),10)); break;
+    case "shareRound": onShareRound(state.activeRoundId); break;
+    case "shareRoundDetail": onShareRound(el.getAttribute("data-id")); break;
+    case "finishRound": onFinishRound(); break;
+    case "resumeRound": onOpenRoundFromList(el.getAttribute("data-id")); break;
+    case "closeModal": closeModal(); break;
+    case "confirmImport": onConfirmImport(); break;
+    case "copyShareUrl": onCopyShareUrl(); break;
+  }
+}
+
+function onDeleteCourse(id){
+  if(!confirm("이 코스를 삭제할까요?")) return;
+  courses = courses.filter(c=>c.id!==id);
+  persistCourses();
+  render();
+}
+
+function onSaveCourse(id){
+  const name = document.getElementById("courseName").value.trim() || "이름없는 코스";
+  const holes = Array.from(document.querySelectorAll("#holeGrid select")).map(sel=>({
+    number: parseInt(sel.getAttribute("data-hole"),10),
+    par: parseInt(sel.value,10)
+  }));
+  if(id){
+    const c = courses.find(c=>c.id===id);
+    c.name = name; c.holes = holes;
+  } else {
+    courses.push({ id: uid(), name, holes, createdAt: Date.now() });
+  }
+  persistCourses();
+  toast("코스가 저장되었습니다");
+  state.view = "courses";
+  render();
+}
+
+function onAddPlayerRow(){
+  const container = document.getElementById("playerRows");
+  container.insertAdjacentHTML("beforeend", renderPlayerRow(newRoundPlayerCount));
+  newRoundPlayerCount++;
+}
+
+function onStartRound(){
+  const courseId = document.getElementById("courseSelect").value;
+  const course = courses.find(c=>c.id===courseId);
+  const roundName = document.getElementById("roundName").value.trim() || "라운드";
+  const nameInputs = document.querySelectorAll("[data-pname]");
+  const players = [];
+  nameInputs.forEach(inp=>{
+    const i = inp.getAttribute("data-pname");
+    const name = inp.value.trim();
+    if(!name) return;
+    const tmode = document.querySelector(`[data-ptmode="${i}"]`).value;
+    const tval = parseInt(document.querySelector(`[data-ptval="${i}"]`).value, 10) || 0;
+    players.push({ id: uid(), name, targetMode: tmode, targetValue: tval });
+  });
+  if(players.length === 0){ toast("참가자를 최소 1명 입력해주세요"); return; }
+
+  const round = {
+    id: uid(),
+    name: roundName,
+    courseId: course.id,
+    courseSnapshot: JSON.parse(JSON.stringify(course)),
+    players,
+    scores: {},
+    currentHole: 1,
+    finished: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  players.forEach(p=> round.scores[p.id] = {});
+  rounds.push(round);
+  persistRounds();
+  state.activeRoundId = round.id;
+  state.view = "round";
+  newRoundPlayerCount = 1;
+  render();
+}
+
+function onOpenRoundFromList(id){
+  const r = rounds.find(r=>r.id===id);
+  if(!r) return;
+  if(r.finished){ state.viewingRoundId = id; state.view = "roundDetail"; }
+  else { state.activeRoundId = id; state.view = "round"; }
+  render();
+}
+
+function onNavHole(delta){
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  round.currentHole = Math.min(18, Math.max(1, round.currentHole + delta));
+  render();
+}
+function onJumpHole(n){
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  round.currentHole = n;
+  render();
+}
+
+function onSetScore(pid, hole, val){
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  round.scores[pid][hole] = val;
+  round.updatedAt = Date.now();
+  persistRounds();
+  render();
+}
+function onSetScoreManual(e){
+  const el = e.currentTarget;
+  const pid = el.getAttribute("data-pid");
+  const hole = parseInt(el.getAttribute("data-hole"),10);
+  const val = parseInt(el.value,10);
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  if(!val || val<1){ delete round.scores[pid][hole]; }
+  else { round.scores[pid][hole] = val; }
+  round.updatedAt = Date.now();
+  persistRounds();
+  render();
+}
+
+function onShareRound(roundId){
+  const round = rounds.find(r=>r.id===roundId);
+  const url = buildShareUrl(round);
+  state.modal = { type:"share", url };
+  render();
+}
+function onCopyShareUrl(){
+  const input = document.getElementById("shareUrlInput");
+  input.select();
+  navigator.clipboard && navigator.clipboard.writeText(input.value).then(()=>toast("링크가 복사되었습니다")).catch(()=>{
+    document.execCommand("copy"); toast("링크가 복사되었습니다");
+  });
+}
+
+function onFinishRound(){
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  if(!confirm("라운드를 종료할까요? 종료 후에도 기록에서 확인할 수 있어요.")) return;
+  round.finished = true;
+  round.updatedAt = Date.now();
+  persistRounds();
+  state.viewingRoundId = round.id;
+  state.activeRoundId = null;
+  state.view = "roundDetail";
+  render();
+}
+
+function onConfirmImport(){
+  const incoming = state.modal.round;
+  const copy = JSON.parse(JSON.stringify(incoming));
+  copy.id = uid();
+  copy.updatedAt = Date.now();
+  rounds.push(copy);
+  persistRounds();
+  state.modal = null;
+  state.activeRoundId = copy.finished ? null : copy.id;
+  state.viewingRoundId = copy.finished ? copy.id : null;
+  state.view = copy.finished ? "roundDetail" : "round";
+  toast("라운드를 불러왔습니다");
+  render();
+}
+
+/* ---------- utils ---------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+/* ---------- init ---------- */
+checkIncomingShare();
+render();
+
+})();
+</script>
+</body>
+</html>
