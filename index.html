@@ -216,6 +216,10 @@
     background:#eef1ef;border:1px dashed var(--border);border-radius:10px;
     padding:14px;text-align:center;color:var(--muted);font-size:12px;
   }
+  .app-footer{
+    text-align:center;padding:18px 16px 8px;font-size:11.5px;color:var(--muted);
+  }
+  .app-footer a{color:var(--green-dark);text-decoration:none;font-weight:600;}
 </style>
 </head>
 <body>
@@ -511,6 +515,7 @@ function render(){
     case "roundDetail": html += renderRoundDetail(); break;
   }
   html += '</div>';
+  html += `<div class="app-footer">버그를 발견했거나 제안하고 싶은 기능이 있나요? <a href="${feedbackIssueUrl()}" target="_blank" rel="noopener">GitHub에 알려주기</a></div>`;
   app.innerHTML = html;
   if(state.modal) renderModal();
   bindEvents();
@@ -1341,6 +1346,16 @@ function onConfirmImport(){
 }
 
 /* ---------- utils ---------- */
+function feedbackIssueUrl(){
+  const title = "[피드백] ";
+  const body = "무엇이 문제였는지 또는 어떤 기능을 원하시는지 적어주세요.\n\n" +
+    "재현 방법(문제 신고 시):\n1. \n2. \n\n" +
+    "환경: " + navigator.userAgent;
+  return "https://github.com/kwondino123420-beep/golf-rounding-log/issues/new"
+    + "?title=" + encodeURIComponent(title)
+    + "&body=" + encodeURIComponent(body);
+}
+
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function escapeAttr(s){ return escapeHtml(s); }
 
