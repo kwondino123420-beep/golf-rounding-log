@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>라운딩 로그 · 골프 스코어 트래커</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{
     --green:#1f6f43;
@@ -196,6 +198,16 @@
   .leader-table{width:100%;border-collapse:collapse;font-size:13px;}
   .leader-table th,.leader-table td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border);}
   .leader-table th{color:var(--muted);font-size:11px;font-weight:600;}
+
+  .distance-line{font-size:16px;font-weight:700;margin-top:8px;opacity:.95;}
+  .gps-row{display:flex;gap:8px;margin-top:12px;}
+  .gps-row .btn{flex:1;background:rgba(255,255,255,0.16);}
+  .gps-row .btn:active{background:rgba(255,255,255,0.3);}
+  #mapContainer{height:320px;border-radius:10px;overflow:hidden;background:#e8ece9;}
+  .ad-slot{
+    background:#eef1ef;border:1px dashed var(--border);border-radius:10px;
+    padding:14px;text-align:center;color:var(--muted);font-size:12px;
+  }
 </style>
 </head>
 <body>
@@ -209,6 +221,7 @@
 /* ---------- storage ---------- */
 const LS_COURSES = "grl_courses";
 const LS_ROUNDS  = "grl_rounds";
+const LS_CONSENT = "grl_locationConsent";
 
 function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : ("id-"+Date.now()+"-"+Math.random().toString(16).slice(2))); }
 function loadJSON(key, fallback){
@@ -310,6 +323,107 @@ function fmtPm(n){
   return (n>0?"+":"") + n;
 }
 
+/* ---------- GPS caddie: location consent, position, distance ---------- */
+function getLocationConsent(){ return loadJSON(LS_CONSENT, null); } // null=not asked yet, true/false=decided
+function setLocationConsent(v){ saveJSON(LS_CONSENT, v); }
+
+function ensureLocationConsent(){
+  return new Promise(resolve=>{
+    const existing = getLocationConsent();
+    if(existing === true || existing === false){ resolve(existing); return; }
+    state.modal = { type:"locationConsent", resolve };
+    render();
+  });
+}
+
+function getPosition(){
+  return new Promise((resolve, reject)=>{
+    if(!navigator.geolocation){ reject(new Error("GEO_UNSUPPORTED")); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      err => reject(err),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  });
+}
+
+function haversineMeters(lat1, lng1, lat2, lng2){
+  const R = 6371000, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function findNearestCourse(pos){
+  let best = null, bestDist = Infinity;
+  courses.forEach(c=>{
+    if(!c.location) return;
+    const d = haversineMeters(pos.lat, pos.lng, c.location.lat, c.location.lng);
+    if(d < bestDist){ bestDist = d; best = c; }
+  });
+  return best ? { course: best, dist: bestDist } : null;
+}
+
+const NEARBY_COURSE_RADIUS_M = 3000;
+
+let lastPosition = null;
+let locationWatchId = null;
+let mapInstance = null;
+
+function startLocationWatch(){
+  if(!navigator.geolocation || locationWatchId != null) return;
+  locationWatchId = navigator.geolocation.watchPosition(
+    pos => { lastPosition = { lat: pos.coords.latitude, lng: pos.coords.longitude }; updateDistanceWidget(); },
+    err => { /* keep last known position on transient GPS errors */ },
+    { enableHighAccuracy: true, maximumAge: 4000, timeout: 10000 }
+  );
+}
+function stopLocationWatch(){
+  if(locationWatchId != null){ navigator.geolocation.clearWatch(locationWatchId); locationWatchId = null; }
+}
+function manageLocationWatch(){
+  if(state.view === "round" && getLocationConsent() === true){
+    startLocationWatch();
+    updateDistanceWidget();
+  } else {
+    stopLocationWatch();
+  }
+}
+
+function updateDistanceWidget(){
+  const el = document.getElementById("distanceToGreen");
+  if(!el) return;
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  if(!round) return;
+  const hole = round.courseSnapshot.holes.find(h=>h.number===round.currentHole);
+  if(!hole || !hole.green){ el.textContent = "이 홀 그린 위치 없음"; return; }
+  if(!lastPosition){ el.textContent = "위치 확인 중..."; return; }
+  const d = haversineMeters(lastPosition.lat, lastPosition.lng, hole.green.lat, hole.green.lng);
+  el.textContent = `⛳ 그린까지 약 ${Math.round(d)}m`;
+}
+
+function getPutts(round, pid, hole){
+  return (round.putts && round.putts[pid] && round.putts[pid][hole] != null) ? round.putts[pid][hole] : null;
+}
+
+function computeSkins(round){
+  const holes = round.courseSnapshot.holes;
+  let pot = 0;
+  const totals = {};
+  round.players.forEach(p=> totals[p.id] = 0);
+  holes.forEach(h=>{
+    const entries = round.players
+      .map(p=>({ id: p.id, score: playerScores(round, p.id)[h.number] }))
+      .filter(e=> e.score != null);
+    if(entries.length < round.players.length) return; // wait until everyone has entered this hole
+    pot += 1;
+    const min = Math.min(...entries.map(e=>e.score));
+    const winners = entries.filter(e=>e.score === min);
+    if(winners.length === 1){ totals[winners[0].id] += pot; pot = 0; }
+  });
+  return { totals, carryOver: pot };
+}
+
 /* ---------- share link (encode round in URL hash) ---------- */
 function encodeRoundForShare(round){
   const json = JSON.stringify(round);
@@ -353,6 +467,7 @@ function render(){
   app.innerHTML = html;
   if(state.modal) renderModal();
   bindEvents();
+  manageLocationWatch();
 }
 
 function renderTopbar(){
@@ -369,18 +484,35 @@ function renderTabs(){
   ).join("") + `</div>`;
 }
 
+let homeDetectedCourse = null; // {course, dist} set by background auto-detect on app open
+
 function renderHome(){
   const active = rounds.filter(r=>!r.finished).sort((a,b)=>b.updatedAt-a.updatedAt);
   const recent = rounds.filter(r=>r.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
   return `
   <div class="card">
     <h2>안녕하세요 ⛳</h2>
-    <p class="muted">코스별 파 정보를 기억하고, 홀마다 목표 타수를 안내받고, 동반자와 링크로 스코어 누계를 공유하세요.</p>
+    <p class="muted">코스별 파 정보를 기억하고, 홀마다 목표 타수를 안내받고, 동반자와 링크로 스코어 누계를 공유하세요. GPS로 그린까지 거리도 확인할 수 있어요.</p>
     <div class="row" style="margin-top:10px;">
       <button class="btn grow" data-act="nav" data-view="newRound">새 라운드 시작</button>
       <button class="btn secondary grow" data-act="nav" data-view="courses">코스 관리</button>
     </div>
   </div>
+  ${homeDetectedCourse ? `<div class="card">
+    <div class="row between">
+      <div>
+        <div class="name">📍 ${escapeHtml(homeDetectedCourse.course.name)}</div>
+        <div class="meta">현재 위치 기준 약 ${Math.round(homeDetectedCourse.dist)}m · 이 코스에 계신 것 같아요</div>
+      </div>
+      <button class="btn sm" data-act="startRoundHereQuick">라운드 시작</button>
+    </div>
+  </div>` : ""}
+  ${getLocationConsent()===false ? `<div class="card">
+    <div class="row between">
+      <div class="muted">위치 서비스가 꺼져 있어요 (자동 코스 인식 · 거리 안내 미사용)</div>
+      <button class="btn ghost sm" data-act="resetLocationConsent">다시 설정</button>
+    </div>
+  </div>` : ""}
   ${active.length ? `<div class="card">
     <h3>진행중 라운드</h3>
     ${active.map(r=>renderRoundListItem(r)).join("")}
@@ -393,6 +525,7 @@ function renderHome(){
     <div class="big">🏌️</div>
     <div>아직 기록된 라운드가 없어요.<br>새 라운드를 시작해보세요.</div>
   </div>` : ""}
+  <div class="ad-slot">광고 영역 (준비 중)</div>
   `;
 }
 
@@ -414,21 +547,24 @@ function renderCourses(){
       <h2 style="margin:0;">내 코스 목록</h2>
       <button class="btn sm" data-act="newCourse">+ 코스 추가</button>
     </div>
-    <p class="muted" style="margin-top:6px;">골프장/코스별 홀 순서와 파 정보를 저장해두면 라운드마다 다시 입력할 필요가 없어요.</p>
+    <p class="muted" style="margin-top:6px;">골프장/코스별 홀 순서와 파 정보를 저장해두면 라운드마다 다시 입력할 필요가 없어요. 동반자가 공유한 라운드를 불러오면 그 코스도 자동으로 이 목록에 추가돼요.</p>
   </div>
   <div class="card">
     ${courses.length===0 ? `<div class="empty">저장된 코스가 없습니다.</div>` :
-      courses.map(c=>`
+      courses.map(c=>{
+        const greenCount = c.holes.filter(h=>h.green).length;
+        return `
       <div class="list-item">
         <div>
           <div class="name">${escapeHtml(c.name)}</div>
-          <div class="meta">18홀 · 파 ${coursePar(c)}</div>
+          <div class="meta">18홀 · 파 ${coursePar(c)} ${c.location?" · 📍 위치 등록됨":""} ${greenCount>0?` · 그린 ${greenCount}/18개 등록`:""}</div>
         </div>
         <div class="row">
           <button class="btn ghost sm" data-act="editCourse" data-id="${c.id}">수정</button>
           <button class="btn danger sm" data-act="deleteCourse" data-id="${c.id}">삭제</button>
         </div>
-      </div>`).join("")
+      </div>`;
+      }).join("")
     }
   </div>`;
 }
@@ -455,6 +591,10 @@ function renderCourseEdit(){
           </select>
         </div>`).join("")}
     </div>
+    ${editing ? `<div class="field">
+      <button class="btn ghost sm" data-act="saveCourseLocation" data-id="${editing.id}">📍 현재 위치를 이 코스 위치로 저장${editing.location ? " (등록됨 · 다시 저장)" : ""}</button>
+      <p class="muted" style="margin-top:6px;">코스 정문/클럽하우스 근처에서 눌러두면, 다음부터 이 골프장에 도착했을 때 자동으로 코스가 인식돼요.</p>
+    </div>` : ""}
     <div class="row" style="margin-top:8px;">
       <button class="btn grow" data-act="saveCourse" data-id="${editing?editing.id:''}">저장</button>
       <button class="btn ghost grow" data-act="nav" data-view="courses">취소</button>
@@ -474,6 +614,7 @@ function renderNewRound(){
       <select id="courseSelect">
         ${courses.map(c=>`<option value="${c.id}">${escapeHtml(c.name)} (파${coursePar(c)})</option>`).join("")}
       </select>
+      <button class="btn ghost sm" data-act="autoDetectCourse" style="margin-top:6px;">📍 현재 위치로 코스 찾기</button>
     </div>
     <div class="field">
       <label>라운드 이름</label>
@@ -516,6 +657,7 @@ function renderRound(){
   const playersHtml = round.players.map(p=>{
     const scores = playerScores(round, p.id);
     const curScore = scores[round.currentHole];
+    const curPutts = getPutts(round, p.id, round.currentHole);
     const g = currentHoleGuidance(round, p);
     const stats = computeStats(round, p);
     const pillOptions = [curHole.par-2, curHole.par-1, curHole.par, curHole.par+1, curHole.par+2, curHole.par+3].filter(v=>v>=1);
@@ -535,14 +677,37 @@ function renderRound(){
         <input type="number" min="1" max="15" placeholder="직접입력" value="${curScore!=null?curScore:''}" data-act="setScoreManual" data-pid="${p.id}" data-hole="${round.currentHole}">
         <span class="muted">타</span>
       </div>
+      <div class="manual-input" style="margin-top:6px;">
+        <input type="number" min="0" max="10" placeholder="퍼팅" value="${curPutts!=null?curPutts:''}" data-act="setPutts" data-pid="${p.id}" data-hole="${round.currentHole}">
+        <span class="muted">퍼팅 수 (선택)</span>
+      </div>
     </div>`;
   }).join("");
+
+  const gpsOn = getLocationConsent() === true;
+  let skinsHtml = "";
+  if(round.players.length >= 2){
+    const sk = computeSkins(round);
+    skinsHtml = `<div class="card">
+      <h3>사이드 게임 · 스킨스</h3>
+      ${round.players.map(p=>`<div class="list-item"><div class="name">${escapeHtml(p.name)}</div><span class="pill">${sk.totals[p.id]}점</span></div>`).join("")}
+      ${sk.carryOver>0 ? `<p class="muted" style="margin-top:6px;">이월된 스킨 ${sk.carryOver}개 · 다음 홀 단독 1위가 가져갑니다</p>` : ""}
+    </div>`;
+  }
 
   return `
   <div class="hole-hero">
     <div class="label">${escapeHtml(round.courseSnapshot.name)}</div>
     <div class="num">HOLE ${round.currentHole}</div>
     <div class="par">PAR ${curHole.par}</div>
+    ${gpsOn
+      ? `<div class="distance-line" id="distanceToGreen">위치 확인 중...</div>
+         <div class="gps-row">
+           ${!curHole.green ? `<button class="btn sm" data-act="saveGreenLocation" data-hole="${round.currentHole}">📍 그린 위치 저장</button>` : ""}
+           <button class="btn sm" data-act="openMap">🗺 지도 보기</button>
+         </div>`
+      : `<div class="gps-row"><button class="btn sm" data-act="enableGps">📍 GPS 켜고 그린까지 거리 보기</button></div>`
+    }
     <div class="hole-nav">
       <button class="btn" data-act="prevHole" ${round.currentHole<=1?'disabled':''}>← 이전 홀</button>
       <button class="btn" data-act="nextHole" ${round.currentHole>=18?'disabled':''}>다음 홀 →</button>
@@ -554,6 +719,7 @@ function renderRound(){
     <h3>스코어카드 누계</h3>
     <div class="scroll-x">${renderScorecardTable(round)}</div>
   </div>
+  ${skinsHtml}
   <div class="card">
     <h3>동반자와 공유하기</h3>
     <p class="muted">링크를 전달하면 상대방이 현재까지의 스코어카드를 그대로 불러와 이어서 기록할 수 있어요. (실시간 동기화가 아니라, 갱신할 때마다 새 링크를 다시 공유하는 방식입니다.)</p>
@@ -595,14 +761,15 @@ function renderHistory(){
     <h2>누계 리더보드</h2>
     <p class="muted">완료된 라운드를 기준으로 참가자 이름별 누계를 집계합니다.</p>
     ${leaderboard.length ? `<div class="scroll-x"><table class="leader-table">
-      <tr><th>이름</th><th>라운드</th><th>평균타수</th><th>평균 파대비</th><th>베스트</th></tr>
-      ${leaderboard.map(l=>`<tr><td><b>${escapeHtml(l.name)}</b></td><td>${l.rounds}</td><td>${l.avg.toFixed(1)}</td><td>${fmtPm(l.avgToPar)}</td><td>${l.best}</td></tr>`).join("")}
+      <tr><th>이름</th><th>라운드</th><th>평균타수</th><th>평균 파대비</th><th>평균퍼팅</th><th>베스트</th></tr>
+      ${leaderboard.map(l=>`<tr><td><b>${escapeHtml(l.name)}</b></td><td>${l.rounds}</td><td>${l.avg.toFixed(1)}</td><td>${fmtPm(l.avgToPar)}</td><td>${l.avgPutts!=null?l.avgPutts.toFixed(1):"-"}</td><td>${l.best}</td></tr>`).join("")}
     </table></div>` : `<div class="empty">완료된 라운드가 없습니다.</div>`}
   </div>
   <div class="card">
     <h3>완료된 라운드</h3>
     ${finished.length ? finished.map(r=>renderRoundListItem(r)).join("") : `<div class="empty">기록이 없습니다.</div>`}
-  </div>`;
+  </div>
+  <div class="ad-slot">광고 영역 (준비 중)</div>`;
 }
 
 function buildLeaderboard(){
@@ -613,15 +780,19 @@ function buildLeaderboard(){
       const stats = computeStats(r, p);
       if(stats.played === 0) return;
       const key = p.name.trim();
-      if(!map[key]) map[key] = { name:key, rounds:0, totalStrokes:0, totalToPar:0, best:Infinity };
+      if(!map[key]) map[key] = { name:key, rounds:0, totalStrokes:0, totalToPar:0, best:Infinity, totalPutts:0, puttsHoles:0 };
       map[key].rounds++;
       map[key].totalStrokes += stats.strokeSum;
       map[key].totalToPar += stats.toParSoFar;
       map[key].best = Math.min(map[key].best, stats.strokeSum);
+      if(r.putts && r.putts[p.id]){
+        Object.values(r.putts[p.id]).forEach(v=>{ map[key].totalPutts += v; map[key].puttsHoles++; });
+      }
     });
   });
   return Object.values(map).map(m=>({
-    name:m.name, rounds:m.rounds, avg:m.totalStrokes/m.rounds, avgToPar:m.totalToPar/m.rounds, best:m.best
+    name:m.name, rounds:m.rounds, avg:m.totalStrokes/m.rounds, avgToPar:m.totalToPar/m.rounds, best:m.best,
+    avgPutts: m.puttsHoles>0 ? m.totalPutts/m.puttsHoles : null
   })).sort((a,b)=>a.avg-b.avg);
 }
 
@@ -640,6 +811,13 @@ function renderRoundDetail(){
       <button class="btn secondary block" data-act="shareRoundDetail" data-id="${round.id}">공유 링크 만들기</button>
     </div>
   </div>
+  ${round.players.length >= 2 ? (()=>{
+    const sk = computeSkins(round);
+    return `<div class="card">
+      <h3>사이드 게임 · 스킨스 결과</h3>
+      ${round.players.map(p=>`<div class="list-item"><div class="name">${escapeHtml(p.name)}</div><span class="pill">${sk.totals[p.id]}점</span></div>`).join("")}
+    </div>`;
+  })() : ""}
   <button class="btn ghost block" data-act="nav" data-view="history">목록으로</button>
   `;
 }
@@ -667,22 +845,70 @@ function renderModal(){
         <input type="text" readonly value="${escapeAttr(m.url)}" id="shareUrlInput">
         <button class="btn sm" data-act="copyShareUrl">복사</button>
       </div>`;
+  } else if(m.type === "locationConsent"){
+    inner = `
+      <button class="close-x" data-act="closeModal">&times;</button>
+      <h3>위치 정보 이용 동의</h3>
+      <p class="muted">GPS로 현재 위치를 확인해서 방문 중인 골프장을 자동으로 찾고, 그린까지 거리를 계산하는 데 사용해요. 위치 정보는 이 기기에만 저장되고 서버로 전송되지 않아요.</p>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn block" data-act="consentAllow">동의</button>
+        <button class="btn ghost block" data-act="consentDeny">거부</button>
+      </div>`;
+  } else if(m.type === "map"){
+    inner = `
+      <button class="close-x" data-act="closeModal">&times;</button>
+      <h3>코스 지도</h3>
+      <div id="mapContainer"></div>
+      <p class="muted" style="margin-top:8px;">공식 골프장 지도가 아니라, 사용자가 직접 기록한 위치를 보여줘요. 여러 번 방문할수록 정확도가 좋아집니다.</p>`;
   }
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `<div class="modal">${inner}</div>`;
   backdrop.addEventListener("click", (e)=>{ if(e.target === backdrop) closeModal(); });
   app.appendChild(backdrop);
+  if(m.type === "map") requestAnimationFrame(initRoundMap);
 }
 
-function closeModal(){ state.modal = null; render(); }
+function closeModal(){
+  if(state.modal && state.modal.type === "locationConsent" && state.modal.resolve){
+    state.modal.resolve(false); // dismissed without a decision - ask again next time
+  }
+  if(mapInstance){ mapInstance.remove(); mapInstance = null; }
+  state.modal = null;
+  render();
+}
+
+function initRoundMap(){
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  const container = document.getElementById("mapContainer");
+  if(!round || !container || typeof L === "undefined") return;
+  const hole = round.courseSnapshot.holes.find(h=>h.number===round.currentHole);
+  const center = (hole && hole.green) ? [hole.green.lat, hole.green.lng]
+    : lastPosition ? [lastPosition.lat, lastPosition.lng]
+    : (round.courseSnapshot.location ? [round.courseSnapshot.location.lat, round.courseSnapshot.location.lng] : [37.5665, 126.9780]);
+  mapInstance = L.map(container).setView(center, 17);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(mapInstance);
+  if(hole && hole.green){
+    L.marker([hole.green.lat, hole.green.lng]).addTo(mapInstance).bindPopup(`${round.currentHole}번 그린`);
+  }
+  if(lastPosition){
+    L.circleMarker([lastPosition.lat, lastPosition.lng], { radius:8, color:"#1f6f43", fillColor:"#1f6f43", fillOpacity:0.9 }).addTo(mapInstance).bindPopup("내 위치");
+  }
+  setTimeout(()=>{ if(mapInstance) mapInstance.invalidateSize(); }, 150);
+}
 
 /* ---------- events ---------- */
 function bindEvents(){
   app.querySelectorAll("[data-act]").forEach(el=>{
     const act = el.getAttribute("data-act");
-    if(el.tagName === "INPUT" && (act==="setScoreManual")){
+    if(el.tagName === "INPUT" && act==="setScoreManual"){
       el.addEventListener("change", onSetScoreManual);
+      return;
+    }
+    if(el.tagName === "INPUT" && act==="setPutts"){
+      el.addEventListener("change", onSetPutts);
       return;
     }
     el.addEventListener("click", onAction);
@@ -703,13 +929,22 @@ function onAction(e){
   const el = e.currentTarget;
   const act = el.getAttribute("data-act");
   switch(act){
-    case "nav": state.view = el.getAttribute("data-view"); render(); break;
+    case "nav": {
+      const target = el.getAttribute("data-view");
+      state.view = target;
+      render();
+      if(target === "newRound" && getLocationConsent() === true) onAutoDetectCourse();
+      if(target === "home" && getLocationConsent() === true) detectNearbyCourseForHome();
+      break;
+    }
     case "gotoRound": state.view = "round"; render(); break;
     case "newCourse": state.editingCourseId = null; state.view = "courseEdit"; render(); break;
     case "editCourse": state.editingCourseId = el.getAttribute("data-id"); state.view = "courseEdit"; render(); break;
     case "deleteCourse": onDeleteCourse(el.getAttribute("data-id")); break;
     case "saveCourse": onSaveCourse(el.getAttribute("data-id")); break;
+    case "saveCourseLocation": onSaveCourseLocation(el.getAttribute("data-id")); break;
     case "startRound": onStartRound(); break;
+    case "startRoundHereQuick": onStartRoundHereQuick(); break;
     case "openRoundFromList": onOpenRoundFromList(el.getAttribute("data-id")); break;
     case "prevHole": onNavHole(-1); break;
     case "nextHole": onNavHole(1); break;
@@ -722,6 +957,13 @@ function onAction(e){
     case "closeModal": closeModal(); break;
     case "confirmImport": onConfirmImport(); break;
     case "copyShareUrl": onCopyShareUrl(); break;
+    case "autoDetectCourse": onAutoDetectCourse(); break;
+    case "enableGps": onEnableGps(); break;
+    case "saveGreenLocation": onSaveGreenLocation(parseInt(el.getAttribute("data-hole"),10)); break;
+    case "openMap": onOpenMap(); break;
+    case "consentAllow": onConsentDecision(true); break;
+    case "consentDeny": onConsentDecision(false); break;
+    case "resetLocationConsent": setLocationConsent(null); toast("위치 서비스 설정이 초기화되었습니다"); render(); break;
   }
 }
 
@@ -779,6 +1021,7 @@ function onStartRound(){
     courseSnapshot: JSON.parse(JSON.stringify(course)),
     players,
     scores: {},
+    putts: {},
     currentHole: 1,
     finished: false,
     createdAt: Date.now(),
@@ -832,6 +1075,114 @@ function onSetScoreManual(e){
   render();
 }
 
+function onSetPutts(e){
+  const el = e.currentTarget;
+  const pid = el.getAttribute("data-pid");
+  const hole = parseInt(el.getAttribute("data-hole"),10);
+  const val = parseInt(el.value,10);
+  const round = rounds.find(r=>r.id===state.activeRoundId);
+  if(!round.putts) round.putts = {};
+  if(!round.putts[pid]) round.putts[pid] = {};
+  if(isNaN(val)){ delete round.putts[pid][hole]; }
+  else { round.putts[pid][hole] = val; }
+  round.updatedAt = Date.now();
+  persistRounds();
+}
+
+async function onConsentDecision(v){
+  const resolve = state.modal && state.modal.resolve;
+  setLocationConsent(v);
+  state.modal = null;
+  render();
+  if(resolve) resolve(v);
+}
+
+async function onAutoDetectCourse(){
+  const consent = await ensureLocationConsent();
+  if(!consent){ toast("위치 접근이 거부되어 자동 인식을 사용할 수 없어요"); return; }
+  toast("현재 위치를 확인하는 중...");
+  try{
+    const pos = await getPosition();
+    const found = findNearestCourse(pos);
+    const sel = document.getElementById("courseSelect");
+    if(found && found.dist <= NEARBY_COURSE_RADIUS_M){
+      if(sel) sel.value = found.course.id;
+      toast(`현재 위치 기반으로 "${found.course.name}" 코스가 자동 선택되었습니다 (약 ${Math.round(found.dist)}m)`);
+    } else {
+      toast("현재 위치와 일치하는 저장된 코스가 없어요. 라운드 중 위치를 등록하면 다음부터 자동 인식돼요.");
+    }
+  }catch(e){
+    toast("위치 정보를 가져오지 못했습니다");
+  }
+}
+
+async function detectNearbyCourseForHome(){
+  try{
+    const pos = await getPosition();
+    const found = findNearestCourse(pos);
+    if(found && found.dist <= NEARBY_COURSE_RADIUS_M){
+      homeDetectedCourse = found;
+      if(state.view === "home") render();
+    }
+  }catch(e){ /* silent - background check */ }
+}
+
+function onStartRoundHereQuick(){
+  state.view = "newRound";
+  render();
+  const sel = document.getElementById("courseSelect");
+  if(sel && homeDetectedCourse) sel.value = homeDetectedCourse.course.id;
+}
+
+async function onSaveCourseLocation(id){
+  const consent = await ensureLocationConsent();
+  if(!consent){ toast("위치 접근이 거부되었습니다"); return; }
+  try{
+    const pos = await getPosition();
+    const c = courses.find(c=>c.id===id);
+    if(!c){ toast("코스를 찾을 수 없습니다"); return; }
+    c.location = { lat: pos.lat, lng: pos.lng };
+    persistCourses();
+    toast("코스 위치가 저장되었습니다");
+    render();
+  }catch(e){ toast("위치 정보를 가져오지 못했습니다"); }
+}
+
+async function onEnableGps(){
+  const consent = await ensureLocationConsent();
+  if(consent){ render(); } else { toast("위치 접근이 거부되었습니다"); }
+}
+
+async function onSaveGreenLocation(holeNumber){
+  const consent = await ensureLocationConsent();
+  if(!consent){ toast("위치 접근이 거부되어 저장할 수 없어요"); return; }
+  try{
+    // A watchPosition is already running in the round view (see manageLocationWatch) - reuse
+    // its last fix instead of firing a competing one-shot request, which can stall indefinitely
+    // when a watch is already active on the same page.
+    const pos = lastPosition || await getPosition();
+    const round = rounds.find(r=>r.id===state.activeRoundId);
+    const hole = round.courseSnapshot.holes.find(h=>h.number===holeNumber);
+    hole.green = { lat: pos.lat, lng: pos.lng };
+    round.updatedAt = Date.now();
+    persistRounds();
+    const course = courses.find(c=>c.id===round.courseId);
+    if(course){
+      const ch = course.holes.find(h=>h.number===holeNumber);
+      if(ch) ch.green = { lat: pos.lat, lng: pos.lng };
+      persistCourses();
+    }
+    lastPosition = { lat: pos.lat, lng: pos.lng };
+    toast(`${holeNumber}번 홀 그린 위치가 저장되었습니다`);
+    render();
+  }catch(e){ toast("위치 정보를 가져오지 못했습니다"); }
+}
+
+function onOpenMap(){
+  state.modal = { type: "map" };
+  render();
+}
+
 function onShareRound(roundId){
   const round = rounds.find(r=>r.id===roundId);
   const url = buildShareUrl(round);
@@ -858,6 +1209,41 @@ function onFinishRound(){
   render();
 }
 
+function courseSignature(course){
+  return course.name.trim() + "|" + course.holes.map(h=>h.par).join(",");
+}
+
+function mergeCourseGeodata(existingCourse, incomingCourseSnapshot){
+  let changed = false;
+  if(!existingCourse.location && incomingCourseSnapshot.location){
+    existingCourse.location = incomingCourseSnapshot.location;
+    changed = true;
+  }
+  incomingCourseSnapshot.holes.forEach(ih=>{
+    const eh = existingCourse.holes.find(h=>h.number===ih.number);
+    if(eh && !eh.green && ih.green){ eh.green = ih.green; changed = true; }
+  });
+  return changed;
+}
+
+function addCourseToLibraryIfNew(courseSnapshot){
+  const sig = courseSignature(courseSnapshot);
+  const existing = courses.find(c=>courseSignature(c)===sig);
+  if(existing){
+    if(mergeCourseGeodata(existing, courseSnapshot)) persistCourses();
+    return false;
+  }
+  courses.push({
+    id: uid(),
+    name: courseSnapshot.name,
+    createdAt: Date.now(),
+    location: courseSnapshot.location ? { ...courseSnapshot.location } : undefined,
+    holes: JSON.parse(JSON.stringify(courseSnapshot.holes))
+  });
+  persistCourses();
+  return true;
+}
+
 function onConfirmImport(){
   const incoming = state.modal.round;
   const copy = JSON.parse(JSON.stringify(incoming));
@@ -865,11 +1251,12 @@ function onConfirmImport(){
   copy.updatedAt = Date.now();
   rounds.push(copy);
   persistRounds();
+  const addedCourse = addCourseToLibraryIfNew(copy.courseSnapshot);
   state.modal = null;
   state.activeRoundId = copy.finished ? null : copy.id;
   state.viewingRoundId = copy.finished ? copy.id : null;
   state.view = copy.finished ? "roundDetail" : "round";
-  toast("라운드를 불러왔습니다");
+  toast(addedCourse ? "라운드를 불러왔습니다 · 새 코스가 내 코스 목록에 저장되었습니다" : "라운드를 불러왔습니다");
   render();
 }
 
@@ -878,8 +1265,10 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 function escapeAttr(s){ return escapeHtml(s); }
 
 /* ---------- init ---------- */
+window.addEventListener("hashchange", ()=>{ checkIncomingShare(); render(); });
 checkIncomingShare();
 render();
+if(getLocationConsent() === true) detectNearbyCourseForHome();
 
 })();
 </script>
