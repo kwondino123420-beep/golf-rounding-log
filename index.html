@@ -14,65 +14,86 @@
 <link rel="icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
   :root{
-    --green:#1f6f43;
-    --green-dark:#154f30;
-    --green-light:#e8f5ec;
-    --bg:#f4f6f5;
-    --card:#ffffff;
-    --text:#1c2621;
-    --muted:#6b7a72;
-    --border:#dfe6e2;
-    --red:#c74848;
-    --blue:#3468c0;
-    --amber:#b8860b;
-    --radius:14px;
-    --shadow:0 1px 3px rgba(20,40,30,0.08), 0 1px 2px rgba(20,40,30,0.06);
+    --green:#1c5c40;
+    --green-dark:#0f3325;
+    --green-light:#e9f1e9;
+    --gold:#a97a35;
+    --gold-light:#f6ecd9;
+    --bg:#f6f4ee;
+    --card:#fffefb;
+    --ink:#20241d;
+    --text:#20241d;
+    --muted:#767a6c;
+    --border:#e6e2d3;
+    --red:#b6483c;
+    --red-light:#f8e9e6;
+    --blue:#33578f;
+    --blue-light:#e7ecf5;
+    --amber:#a97a35;
+    --radius:18px;
+    --radius-sm:11px;
+    --shadow:0 1px 2px rgba(28,32,20,0.04), 0 6px 20px -6px rgba(28,32,20,0.10);
+    --shadow-lift:0 2px 4px rgba(28,32,20,0.05), 0 12px 28px -8px rgba(28,32,20,0.16);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);
     color:var(--text);
     -webkit-tap-highlight-color:transparent;
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:-0.01em;
   }
   #app{max-width:720px;margin:0 auto;padding:0 0 60px;min-height:100vh;background:var(--bg);}
   a{color:inherit;}
+  h1,h2,h3{text-wrap:balance;}
+  .icon{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;flex:none;}
+  .icon svg{display:block;}
+  ::selection{background:var(--green);color:#fff;}
 
   /* top bar */
   .topbar{
     position:sticky;top:0;z-index:20;
-    background:var(--green);color:#fff;
+    background:linear-gradient(165deg,var(--green),var(--green-dark));color:#fff;
     padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
     box-shadow:var(--shadow);
   }
-  .topbar .brand{font-weight:700;font-size:17px;letter-spacing:.2px;display:flex;align-items:center;gap:8px;}
-  .topbar .brand .dot{width:8px;height:8px;border-radius:50%;background:#8fe3b0;}
+  .topbar .brand{font-weight:800;font-size:16.5px;letter-spacing:-.01em;display:flex;align-items:center;gap:9px;}
+  .topbar .brand .badge{
+    width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.16);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+  }
   .topbar button{
-    background:rgba(255,255,255,0.14);color:#fff;border:none;border-radius:8px;
-    padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;
+    background:rgba(255,255,255,0.14);color:#fff;border:none;border-radius:9px;
+    padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;
+    display:inline-flex;align-items:center;gap:5px;
   }
   .topbar button:active{background:rgba(255,255,255,0.28);}
 
   .tabs{
-    display:flex;gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border);
-    position:sticky;top:52px;z-index:19;overflow-x:auto;
+    display:flex;gap:2px;padding:6px 10px 0;background:var(--card);border-bottom:1px solid var(--border);
+    position:sticky;top:53px;z-index:19;overflow-x:auto;
   }
   .tab{
-    flex:1;text-align:center;padding:9px 6px;border-radius:10px;font-size:13px;font-weight:600;
-    color:var(--muted);cursor:pointer;white-space:nowrap;
+    flex:1;text-align:center;padding:10px 6px 9px;font-size:12.5px;font-weight:700;
+    color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:2.5px solid transparent;
+    display:flex;flex-direction:column;align-items:center;gap:4px;transition:color .15s ease;
   }
-  .tab.active{background:var(--green-light);color:var(--green-dark);}
+  .tab .icon{opacity:.75;}
+  .tab.active{color:var(--green);border-bottom-color:var(--green);}
+  .tab.active .icon{opacity:1;}
 
   .view{padding:16px;}
   .card{
     background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
-    padding:16px;margin-bottom:14px;border:1px solid var(--border);
+    padding:18px;margin-bottom:14px;border:1px solid var(--border);
   }
-  .card h2{margin:0 0 4px;font-size:16px;}
-  .card h3{margin:0 0 10px;font-size:14px;color:var(--muted);font-weight:600;}
+  .card h2{margin:0 0 5px;font-size:17px;font-weight:800;letter-spacing:-.01em;}
+  .card h3{margin:0 0 12px;font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
   .muted{color:var(--muted);font-size:13px;}
   .row{display:flex;gap:10px;align-items:center;}
   .row.between{justify-content:space-between;}
@@ -81,145 +102,207 @@
 
   .btn{
     display:inline-flex;align-items:center;justify-content:center;gap:6px;
-    background:var(--green);color:#fff;border:none;border-radius:10px;
-    padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;
+    background:linear-gradient(180deg,var(--green) 0%,var(--green-dark) 130%);color:#fff;border:none;border-radius:12px;
+    padding:12px 16px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:-.01em;
+    box-shadow:0 1px 1px rgba(15,51,37,0.15), 0 4px 10px -4px rgba(15,51,37,0.4);
+    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
   }
-  .btn:active{background:var(--green-dark);}
-  .btn.secondary{background:#fff;color:var(--green-dark);border:1.5px solid var(--green);}
-  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
-  .btn.danger{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .btn:active{transform:translateY(1px) scale(.99);box-shadow:0 1px 1px rgba(15,51,37,0.2);}
+  .btn.secondary{background:var(--card);color:var(--green-dark);border:1.5px solid var(--green);box-shadow:none;}
+  .btn.secondary:active{background:var(--green-light);}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);box-shadow:none;}
+  .btn.ghost:active{background:var(--border);}
+  .btn.danger{background:var(--card);color:var(--red);border:1.5px solid var(--red);box-shadow:none;}
   .btn.block{width:100%;}
-  .btn.sm{padding:7px 10px;font-size:12.5px;border-radius:8px;}
-  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn.sm{padding:8px 11px;font-size:12.5px;border-radius:9px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
 
   input[type=text],input[type=number],select{
-    width:100%;padding:10px 11px;border:1.5px solid var(--border);border-radius:10px;
-    font-size:14px;background:#fff;color:var(--text);
+    width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+    font-size:14px;background:var(--card);color:var(--text);font-family:inherit;
   }
-  input:focus,select:focus{outline:2px solid var(--green);outline-offset:1px;}
-  label{font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
-  .field{margin-bottom:10px;}
+  input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px var(--green-light);}
+  label{font-size:12px;color:var(--muted);font-weight:700;display:block;margin-bottom:5px;letter-spacing:.01em;}
+  .field{margin-bottom:12px;}
 
   .empty{
-    text-align:center;padding:34px 16px;color:var(--muted);
+    text-align:center;padding:38px 16px;color:var(--muted);
   }
-  .empty .big{font-size:32px;margin-bottom:8px;}
+  .empty .big{margin-bottom:12px;color:var(--border);display:flex;justify-content:center;}
 
   .list-item{
     display:flex;align-items:center;justify-content:space-between;
-    padding:12px 4px;border-bottom:1px solid var(--border);
+    padding:13px 4px;border-bottom:1px solid var(--border);
   }
   .list-item:last-child{border-bottom:none;}
   .list-item .name{font-weight:700;font-size:14.5px;}
-  .list-item .meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .list-item .meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
 
   .pill{
-    display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;
-    background:var(--green-light);color:var(--green-dark);
+    display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;
+    background:var(--green-light);color:var(--green-dark);font-variant-numeric:tabular-nums;
   }
-  .pill.over{background:#fdeaea;color:var(--red);}
-  .pill.under{background:#e9f0fd;color:var(--blue);}
+  .pill.over{background:var(--red-light);color:var(--red);}
+  .pill.under{background:var(--blue-light);color:var(--blue);}
+  .pill.gold{background:var(--gold-light);color:var(--gold);}
 
   /* course editor */
-  .hole-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px;}
+  .hole-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:10px;}
   .hole-cell{text-align:center;}
-  .hole-cell .hn{font-size:10.5px;color:var(--muted);margin-bottom:3px;}
-  .hole-cell select{padding:6px 2px;font-size:13px;text-align:center;}
-  .par-sum{font-size:13px;color:var(--green-dark);font-weight:700;}
+  .hole-cell .hn{font-size:10.5px;color:var(--muted);margin-bottom:4px;font-weight:600;}
+  .hole-cell select{padding:7px 2px;font-size:13px;text-align:center;font-weight:700;}
+  .par-sum{font-size:12.5px;color:var(--green);font-weight:800;}
 
   /* round view */
   .hole-hero{
-    background:linear-gradient(135deg,var(--green),var(--green-dark));
-    color:#fff;border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:14px;
-    box-shadow:var(--shadow);
+    position:relative;overflow:hidden;
+    background:linear-gradient(160deg,var(--green) 0%,var(--green-dark) 100%);
+    color:#fff;border-radius:22px;padding:24px 22px;text-align:center;margin-bottom:14px;
+    box-shadow:var(--shadow-lift);
   }
-  .hole-hero .label{font-size:12px;opacity:.85;letter-spacing:1px;text-transform:uppercase;}
-  .hole-hero .num{font-size:44px;font-weight:800;line-height:1.1;}
-  .hole-hero .par{font-size:15px;opacity:.9;margin-top:2px;}
-  .hole-nav{display:flex;gap:8px;margin-top:14px;}
-  .hole-nav .btn{flex:1;background:rgba(255,255,255,0.16);}
-  .hole-nav .btn:active{background:rgba(255,255,255,0.3);}
+  .hole-hero::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% -20%, rgba(255,255,255,0.14), transparent 60%);
+  }
+  .hole-hero>*{position:relative;}
+  .hole-hero .label{font-size:11.5px;opacity:.8;letter-spacing:.08em;text-transform:uppercase;font-weight:700;}
+  .hole-hero .num{font-size:50px;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:2px;}
+  .hole-hero .par{font-size:13.5px;opacity:.85;margin-top:4px;font-weight:600;letter-spacing:.04em;}
+  .hole-hero .par::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--gold);margin-right:7px;vertical-align:1px;}
+  .distance-line{margin-top:16px;}
+  .distance-line .dist-num{font-size:34px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+  .distance-line .dist-unit{font-size:13px;opacity:.75;margin-left:4px;font-weight:600;}
+  .distance-line .dist-sub{font-size:12px;opacity:.7;margin-top:1px;}
+  .hole-nav{display:flex;gap:8px;margin-top:16px;}
+  .hole-nav .btn{flex:1;background:rgba(255,255,255,0.14);box-shadow:none;font-weight:600;}
+  .hole-nav .btn:active{background:rgba(255,255,255,0.26);}
 
   .hole-strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;}
   .hole-chip{
-    min-width:38px;height:38px;border-radius:9px;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;font-size:10.5px;font-weight:700;
-    background:#fff;border:1.5px solid var(--border);color:var(--muted);flex-shrink:0;cursor:pointer;
+    min-width:38px;height:42px;border-radius:11px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-size:11px;font-weight:700;
+    background:var(--card);border:1.5px solid var(--border);color:var(--muted);flex-shrink:0;cursor:pointer;
+    transition:transform .1s ease;font-variant-numeric:tabular-nums;
   }
-  .hole-chip .n{font-size:9.5px;font-weight:600;opacity:.7;}
-  .hole-chip.current{border-color:var(--green);color:var(--green-dark);background:var(--green-light);}
+  .hole-chip:active{transform:scale(.94);}
+  .hole-chip .n{font-size:9px;font-weight:600;opacity:.65;margin-top:1px;}
+  .hole-chip.current{border-color:var(--green);color:var(--green);background:var(--green-light);box-shadow:0 0 0 3px var(--green-light);}
   .hole-chip.filled{background:var(--green-dark);color:#fff;border-color:var(--green-dark);}
+  .hole-chip.filled .n{opacity:.6;}
 
-  .player-card{border:1.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
-  .player-card .pname{font-weight:700;font-size:14.5px;}
-  .player-card .stat-row{display:flex;gap:14px;margin:8px 0;font-size:12.5px;color:var(--muted);flex-wrap:wrap;}
-  .player-card .stat-row b{color:var(--text);}
+  .player-card{border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;background:var(--card);}
+  .player-card .pname{font-weight:800;font-size:15px;letter-spacing:-.01em;}
+  .player-card .stat-row{display:flex;gap:14px;margin:9px 0;font-size:12.5px;color:var(--muted);flex-wrap:wrap;}
+  .player-card .stat-row b{color:var(--text);font-variant-numeric:tabular-nums;}
   .guidance{
+    display:flex;gap:10px;align-items:flex-start;
     font-size:12.5px;background:var(--green-light);color:var(--green-dark);
-    border-radius:8px;padding:7px 10px;margin-bottom:9px;font-weight:600;line-height:1.4;
+    border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;font-weight:600;line-height:1.5;
   }
-  .guidance.warn{background:#fdeaea;color:var(--red);}
+  .guidance.warn{background:var(--red-light);color:var(--red);}
+  .caddie-avatar{
+    flex:none;width:24px;height:24px;border-radius:50%;background:var(--green-dark);color:#fff;
+    display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  .caddie-avatar.warn{background:var(--red);}
+  .caddie-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;opacity:.65;margin-bottom:2px;}
   .score-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
   .score-pill{
-    padding:8px 0;width:44px;text-align:center;border-radius:9px;border:1.5px solid var(--border);
-    font-size:13px;font-weight:700;background:#fff;cursor:pointer;color:var(--text);
+    padding:9px 0;width:45px;text-align:center;border-radius:10px;border:1.5px solid var(--border);
+    font-size:13.5px;font-weight:800;background:var(--card);cursor:pointer;color:var(--text);
+    transition:transform .1s ease;font-variant-numeric:tabular-nums;
   }
-  .score-pill.selected{background:var(--green);color:#fff;border-color:var(--green);}
+  .score-pill:active{transform:scale(.93);}
+  .score-pill.selected{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 3px 8px -2px rgba(15,51,37,0.5);}
   .manual-input{display:flex;gap:8px;align-items:center;}
-  .manual-input input{width:80px;flex:none;}
+  .manual-input input{width:84px;flex:none;}
 
-  table.scorecard{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
-  table.scorecard th,table.scorecard td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--border);}
-  table.scorecard th{color:var(--muted);font-weight:600;font-size:10.5px;}
-  table.scorecard td.pname{text-align:left;font-weight:700;position:sticky;left:0;background:#fff;}
+  table.scorecard{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  table.scorecard th,table.scorecard td{padding:6px;text-align:center;border-bottom:1px solid var(--border);}
+  table.scorecard th{color:var(--muted);font-weight:700;font-size:10px;}
+  table.scorecard td.pname{text-align:left;font-weight:700;position:sticky;left:0;background:var(--card);box-shadow:2px 0 4px -2px rgba(28,32,20,0.08);}
   .scroll-x{overflow-x:auto;}
-  .score-birdie{color:var(--blue);font-weight:800;}
-  .score-bogey{color:var(--red);font-weight:800;}
-  .score-par{color:var(--text);font-weight:600;}
+  .score-mark{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;font-weight:800;}
+  .score-birdie{color:var(--blue);border-radius:50%;box-shadow:0 0 0 1.5px var(--blue);}
+  .score-bogey{color:var(--red);border-radius:3px;box-shadow:0 0 0 1.5px var(--red);}
+  .score-par{color:var(--text);font-weight:700;}
 
   .share-box{display:flex;gap:8px;margin-top:8px;}
   .share-box input{flex:1;font-size:12px;color:var(--muted);}
 
   .toast{
-    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
-    background:var(--green-dark);color:#fff;padding:10px 18px;border-radius:999px;
-    font-size:13px;font-weight:600;box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;
-    transition:opacity .2s ease, transform .2s ease;
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(4px);
+    background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;
+    font-size:13px;font-weight:600;box-shadow:var(--shadow-lift);z-index:100;opacity:0;pointer-events:none;
+    transition:opacity .22s ease, transform .22s ease;
   }
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
   .modal-backdrop{
-    position:fixed;inset:0;background:rgba(15,25,20,0.5);z-index:50;
+    position:fixed;inset:0;background:rgba(20,24,16,0.5);z-index:50;
     display:flex;align-items:flex-end;justify-content:center;
+    animation:fadeIn .18s ease;
   }
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  @keyframes slideUp{from{transform:translateY(24px);opacity:.4;}to{transform:translateY(0);opacity:1;}}
   .modal{
-    background:#fff;border-radius:16px 16px 0 0;padding:18px 16px 24px;width:100%;max-width:720px;
-    max-height:88vh;overflow-y:auto;
+    background:var(--card);border-radius:22px 22px 0 0;padding:20px 18px 26px;width:100%;max-width:720px;
+    max-height:88vh;overflow-y:auto;animation:slideUp .22s cubic-bezier(.2,.7,.3,1);
   }
   @media(min-width:600px){
     .modal-backdrop{align-items:center;}
-    .modal{border-radius:16px;max-width:480px;}
+    .modal{border-radius:20px;max-width:480px;}
   }
-  .modal h3{margin:0 0 12px;font-size:16px;}
+  .modal h3{margin:0 0 12px;font-size:17px;font-weight:800;}
   .close-x{float:right;background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;}
 
-  .leader-table{width:100%;border-collapse:collapse;font-size:13px;}
-  .leader-table th,.leader-table td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border);}
-  .leader-table th{color:var(--muted);font-size:11px;font-weight:600;}
+  .leader-table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;}
+  .leader-table th,.leader-table td{padding:9px 6px;text-align:left;border-bottom:1px solid var(--border);}
+  .leader-table th{color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
 
-  .distance-line{font-size:16px;font-weight:700;margin-top:8px;opacity:.95;}
-  .gps-row{display:flex;gap:8px;margin-top:12px;}
-  .gps-row .btn{flex:1;background:rgba(255,255,255,0.16);}
-  .gps-row .btn:active{background:rgba(255,255,255,0.3);}
-  #mapContainer{height:320px;border-radius:10px;overflow:hidden;background:#e8ece9;}
+  .gps-row{display:flex;gap:8px;margin-top:14px;}
+  .gps-row .btn{flex:1;background:rgba(255,255,255,0.14);box-shadow:none;font-weight:600;}
+  .gps-row .btn:active{background:rgba(255,255,255,0.26);}
+  .gps-hint{margin-top:8px;font-size:12px;opacity:.8;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer;}
+  #mapContainer{height:320px;border-radius:var(--radius-sm);overflow:hidden;background:var(--border);}
+  .hero-card{
+    position:relative;overflow:hidden;
+    background:linear-gradient(160deg,var(--green) 0%,var(--green-dark) 100%);
+    color:#fff;border-radius:22px;padding:24px 22px;margin-bottom:14px;
+    box-shadow:var(--shadow-lift);
+  }
+  .hero-card::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 90% at 8% -10%, rgba(255,255,255,0.14), transparent 55%);
+  }
+  .hero-card>*{position:relative;}
+  .hero-crest{position:absolute;top:-10px;right:-6px;opacity:.14;transform:rotate(8deg);}
+  .hero-eyebrow{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:8px;}
+  .hero-card h2{margin:0 0 8px;font-size:21px;font-weight:800;line-height:1.35;letter-spacing:-.01em;}
+  .hero-card p{margin:0;color:rgba(255,255,255,0.82);font-size:13px;line-height:1.6;max-width:36ch;}
+  .hero-card .btn{background:#fff;color:var(--green-dark);box-shadow:0 4px 14px -4px rgba(0,0,0,0.35);}
+  .hero-card .btn:active{background:#eef1e8;transform:translateY(1px) scale(.99);}
+  .text-link{
+    display:inline-flex;align-items:center;gap:5px;color:rgba(255,255,255,0.85);
+    font-size:12.5px;font-weight:600;cursor:pointer;padding:4px 2px;
+  }
+
+  .onboard-step{display:flex;gap:12px;align-items:flex-start;padding:9px 0;}
+  .onboard-num{
+    flex:none;width:22px;height:22px;border-radius:50%;background:var(--green-light);color:var(--green-dark);
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;margin-top:1px;
+  }
+  .onboard-step b{font-size:13.5px;}
+  .onboard-step .muted{margin-top:2px;font-size:12.5px;}
+
   .ad-slot{
-    background:#eef1ef;border:1px dashed var(--border);border-radius:10px;
-    padding:14px;text-align:center;color:var(--muted);font-size:12px;
+    background:var(--card);border:1.5px dashed var(--border);border-radius:var(--radius-sm);
+    padding:16px;text-align:center;color:var(--muted);font-size:11.5px;
   }
   .app-footer{
-    text-align:center;padding:18px 16px 8px;font-size:11.5px;color:var(--muted);
+    text-align:center;padding:20px 16px 10px;font-size:11.5px;color:var(--muted);
   }
-  .app-footer a{color:var(--green-dark);text-decoration:none;font-weight:600;}
+  .app-footer a{color:var(--green);text-decoration:none;font-weight:700;}
 </style>
 </head>
 <body>
@@ -237,6 +320,29 @@ const LS_CONSENT = "grl_locationConsent";
 const LS_INSTALL_DISMISSED = "grl_installBannerDismissed";
 
 function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : ("id-"+Date.now()+"-"+Math.random().toString(16).slice(2))); }
+
+/* ---------- icon system (inline SVG, currentColor) ---------- */
+const ICON_PATHS = {
+  home: '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/>',
+  pin: '<path d="M12 21s-7-7.4-7-12.4a7 7 0 0 1 14 0C19 13.6 12 21 12 21z"/><circle cx="12" cy="8.6" r="2.6"/>',
+  flag: '<path d="M6 21V4"/><path d="M6 4h11l-3 4 3 4H6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.3" fill="currentColor" stroke="none"/>',
+  map: '<path d="m9 4-6 2v15l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v15M15 6v15"/>',
+  phone: '<rect x="7" y="2" width="10" height="20" rx="2.2"/><path d="M11 18h2"/>',
+  trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v4M9 21h6M9.5 17h5l.5 4H9l.5-4z"/>',
+  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor" stroke="none"/>',
+  link: '<path d="M9 15 15 9"/><path d="M10 6.5 11.2 5.3a3.8 3.8 0 0 1 5.5 5.5L15.5 12"/><path d="M14 17.5 12.8 18.7a3.8 3.8 0 0 1-5.5-5.5L8.5 12"/>',
+  gauge: '<path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15 15.5 10"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/>',
+  bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.45 1 1.2 1 2.1h5c0-.9.4-1.65 1-2.1A6 6 0 0 0 12 3z"/>',
+  flagHole: '<ellipse cx="12" cy="20.5" rx="7" ry="1.6"/><path d="M8 20.5V6"/><path d="M8 6l8 3-8 3"/>',
+  refresh: '<path d="M20 11A8 8 0 0 0 6 6.3L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.7l2-2"/><path d="M20 20v-4h-4"/>',
+  caddie: '<circle cx="12" cy="7.5" r="3"/><path d="M5.5 20c0-4 2.9-6.7 6.5-6.7s6.5 2.7 6.5 6.7"/>'
+};
+function icon(name, size){
+  size = size || 16;
+  return `<span class="icon" style="width:${size}px;height:${size}px;"><svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||""}</svg></span>`;
+}
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch(e){ return fallback; }
@@ -251,7 +357,7 @@ function persistRounds(){ saveJSON(LS_ROUNDS, rounds); }
 
 /* seed sample course on first run */
 if(courses.length === 0){
-  courses.push(makeCourse("샘플 컨트리클럽 (파72)", [4,4,3,5,4,4,3,5,4, 4,4,3,5,4,4,3,5,4]));
+  courses.push(makeCourse("샘플 컨트리클럽", [4,4,3,5,4,4,3,5,4, 4,4,3,5,4,4,3,5,4]));
   persistCourses();
 }
 
@@ -320,14 +426,28 @@ function currentHoleGuidance(round, player){
   const curHole = round.courseSnapshot.holes.find(h=>h.number===round.currentHole);
   if(!curHole) return null;
   if(stats.remainingHoles === 0){
-    return { text: `18홀 완료 · 최종 ${stats.strokeSum}타 (파 대비 ${fmtPm(stats.toParSoFar)})`, warn: stats.strokeSum > stats.target };
+    const madeIt = stats.strokeSum <= stats.target;
+    const text = madeIt
+      ? `수고하셨습니다! 최종 ${stats.strokeSum}타(파 대비 ${fmtPm(stats.toParSoFar)})로 목표를 지키셨어요.`
+      : `수고하셨습니다! 최종 ${stats.strokeSum}타(파 대비 ${fmtPm(stats.toParSoFar)})로 라운드를 마쳤어요.`;
+    return { text, warn: !madeIt };
   }
   const avgAllowed = stats.remainingBudget / stats.remainingHoles;
   const recommended = Math.max(curHole.par - 2, Math.round(curHole.par + (stats.remainingToParAllowed / stats.remainingHoles)));
   const warn = stats.remainingToParAllowed < 0;
-  const text = `이번 홀(파${curHole.par}) 권장 ${recommended}타 이내 · 남은 ${stats.remainingHoles}홀 평균 ${avgAllowed.toFixed(1)}타 여유`
-    + (warn ? ` · 목표(${stats.target}타) 대비 파플레이로도 ${Math.abs(stats.remainingToParAllowed)}타 초과` : ` · 목표(${stats.target}타) 대비 ${fmtPm(-stats.remainingToParAllowed)}홀 여유`);
+  const text = warn
+    ? `지금 페이스면 목표가 조금 빠듯해요. 이번 홀(파${curHole.par})은 ${recommended}타 안에 끝내볼까요? 파 플레이로 가도 목표까지 ${Math.abs(stats.remainingToParAllowed)}타 모자라요.`
+    : `이번 홀은 파${curHole.par}, ${recommended}타 안이면 지금 페이스 그대로예요. 남은 ${stats.remainingHoles}홀 평균 ${avgAllowed.toFixed(1)}타 여유 있어요.`;
   return { text, warn, recommended };
+}
+
+function caddieScoreRemark(score, par){
+  const diff = score - par;
+  if(diff <= -2) return "이글이에요! 오늘 대단하시네요.";
+  if(diff === -1) return "버디! 나이스 샷이었어요.";
+  if(diff === 0) return "파 지켰습니다. 이대로 가시죠.";
+  if(diff === 1) return "괜찮아요, 다음 홀에서 만회하시죠.";
+  return "다음 홀엔 편한 홀로 흐름 한번 바꿔봐요.";
 }
 
 function fmtPm(n){
@@ -447,10 +567,10 @@ function updateDistanceWidget(){
   const round = rounds.find(r=>r.id===state.activeRoundId);
   if(!round) return;
   const hole = round.courseSnapshot.holes.find(h=>h.number===round.currentHole);
-  if(!hole || !hole.green){ el.textContent = "이 홀 그린 위치 없음"; return; }
-  if(!lastPosition){ el.textContent = "위치 확인 중..."; return; }
+  if(!hole || !hole.green){ el.innerHTML = `<div class="dist-sub">이 홀 그린 위치 없음</div>`; return; }
+  if(!lastPosition){ el.innerHTML = `<div class="dist-sub">위치 확인 중...</div>`; return; }
   const d = haversineMeters(lastPosition.lat, lastPosition.lng, hole.green.lat, hole.green.lng);
-  el.textContent = `⛳ 그린까지 약 ${Math.round(d)}m`;
+  el.innerHTML = `<span class="dist-num">${Math.round(d)}</span><span class="dist-unit">m 남았어요</span>`;
 }
 
 function getPutts(round, pid, hole){
@@ -524,39 +644,59 @@ function render(){
 
 function renderTopbar(){
   return `<div class="topbar">
-    <div class="brand"><span class="dot"></span> 라운딩 로그</div>
-    ${state.activeRoundId ? '<button data-act="gotoRound">진행중 라운드</button>' : ''}
+    <div class="brand"><span class="badge">${icon('flag',15)}</span>라운딩 로그</div>
+    ${state.activeRoundId ? `<button data-act="gotoRound">${icon('target',13)}진행중 라운드</button>` : ''}
   </div>`;
 }
 
 function renderTabs(){
-  const tabs = [["home","홈"],["courses","코스"],["newRound","새 라운드"],["history","기록"]];
-  return `<div class="tabs">` + tabs.map(([v,label])=>
-    `<div class="tab ${state.view===v?"active":""}" data-act="nav" data-view="${v}">${label}</div>`
+  const tabs = [["home","홈","home"],["courses","코스","pin"],["newRound","새 라운드","plus"],["history","기록","list"]];
+  return `<div class="tabs">` + tabs.map(([v,label,ic])=>
+    `<div class="tab ${state.view===v?"active":""}" data-act="nav" data-view="${v}">${icon(ic,18)}${label}</div>`
   ).join("") + `</div>`;
 }
 
 let homeDetectedCourse = null; // {course, dist} set by background auto-detect on app open
 
+function timeGreeting(){
+  const h = new Date().getHours();
+  if(h < 5) return "늦은 밤이에요";
+  if(h < 12) return "좋은 아침이에요";
+  if(h < 18) return "좋은 오후예요";
+  return "좋은 저녁이에요";
+}
+
 function renderHome(){
   const active = rounds.filter(r=>!r.finished).sort((a,b)=>b.updatedAt-a.updatedAt);
   const recent = rounds.filter(r=>r.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
+  const hasHistory = active.length || recent.length;
   return `
-  <div class="card">
-    <h2>안녕하세요 ⛳</h2>
-    <p class="muted">코스별 파 정보를 기억하고, 홀마다 목표 타수를 안내받고, 동반자와 링크로 스코어 누계를 공유하세요. GPS로 그린까지 거리도 확인할 수 있어요.</p>
-    <div class="row" style="margin-top:10px;">
-      <button class="btn grow" data-act="nav" data-view="newRound">새 라운드 시작</button>
-      <button class="btn secondary grow" data-act="nav" data-view="courses">코스 관리</button>
+  <div class="hero-card">
+    <div class="hero-crest">${icon('flagHole',88)}</div>
+    <div class="hero-eyebrow">${icon('caddie',12)}나의 개인 캐디</div>
+    <h2>${timeGreeting()}<br>오늘 라운드, 제가 함께할게요</h2>
+    <p class="muted">그린까지 거리, 이번 홀에 몇 타를 쳐야 할지, 목표 페이스까지 — 홀마다 알려드리고, 스코어 누계까지 대신 기록해둘게요.</p>
+    <button class="btn block" style="margin-top:16px;" data-act="nav" data-view="newRound">${icon('flag',15)}새 라운드 시작</button>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <span class="text-link" data-act="nav" data-view="courses">${icon('pin',13)}코스 관리하기</span>
     </div>
   </div>
+  ${!hasHistory ? `<div class="card">
+    <h3>시작하는 방법</h3>
+    <div class="onboard-step"><span class="onboard-num">1</span><div><b>코스 등록</b><div class="muted">다니시는 골프장 이름과 18홀 파 정보를 입력해두세요</div></div></div>
+    <div class="onboard-step"><span class="onboard-num">2</span><div><b>라운드 시작</b><div class="muted">코스와 참가자, 목표 타수를 정하고 시작하세요</div></div></div>
+    <div class="onboard-step"><span class="onboard-num">3</span><div><b>스코어 기록</b><div class="muted">홀마다 타수를 남기면 누계와 목표 달성 여부가 자동으로 계산돼요</div></div></div>
+  </div>` : ""}
   ${shouldShowInstallBanner() ? `<div class="card">
     <div class="row between">
-      <div>
-        <div class="name">📲 홈 화면에 추가</div>
-        <div class="meta">앱처럼 아이콘으로 실행하고, 전파가 약한 필드에서도 더 안정적으로 써보세요.</div>
+      <div class="row" style="gap:10px;">
+        <div style="width:32px;height:32px;border-radius:9px;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center;flex:none;">${icon('phone',17)}</div>
+        <div>
+          <div class="name">홈 화면에 추가</div>
+          <div class="meta">앱처럼 아이콘으로 실행하고, 전파가 약한 필드에서도 안정적으로</div>
+        </div>
       </div>
-      <div class="row" style="gap:6px;">
+      <div class="row" style="gap:6px;flex:none;">
         <button class="btn ghost sm" data-act="dismissInstallBanner">닫기</button>
         <button class="btn sm" data-act="installApp">추가</button>
       </div>
@@ -565,7 +705,7 @@ function renderHome(){
   ${homeDetectedCourse ? `<div class="card">
     <div class="row between">
       <div>
-        <div class="name">📍 ${escapeHtml(homeDetectedCourse.course.name)}</div>
+        <div class="name">${icon('pin',15)}${escapeHtml(homeDetectedCourse.course.name)}</div>
         <div class="meta">현재 위치 기준 약 ${Math.round(homeDetectedCourse.dist)}m · 이 코스에 계신 것 같아요</div>
       </div>
       <button class="btn sm" data-act="startRoundHereQuick">라운드 시작</button>
@@ -585,11 +725,7 @@ function renderHome(){
     <h3>최근 완료 라운드</h3>
     ${recent.map(r=>renderRoundListItem(r)).join("")}
   </div>` : ""}
-  ${(!active.length && !recent.length) ? `<div class="card empty">
-    <div class="big">🏌️</div>
-    <div>아직 기록된 라운드가 없어요.<br>새 라운드를 시작해보세요.</div>
-  </div>` : ""}
-  <div class="ad-slot">광고 영역 (준비 중)</div>
+  ${hasHistory ? `<div class="ad-slot">광고 영역 (준비 중)</div>` : ""}
   `;
 }
 
@@ -621,7 +757,7 @@ function renderCourses(){
       <div class="list-item">
         <div>
           <div class="name">${escapeHtml(c.name)}</div>
-          <div class="meta">18홀 · 파 ${coursePar(c)} ${c.location?" · 📍 위치 등록됨":""} ${greenCount>0?` · 그린 ${greenCount}/18개 등록`:""}</div>
+          <div class="meta">18홀 · 파 ${coursePar(c)} ${c.location?` · ${icon('pin',12)}위치 등록됨`:""} ${greenCount>0?` · 그린 ${greenCount}/18개 등록`:""}</div>
         </div>
         <div class="row">
           <button class="btn ghost sm" data-act="editCourse" data-id="${c.id}">수정</button>
@@ -640,7 +776,7 @@ function renderCourseEdit(){
   const sum = holes.reduce((s,h)=>s+h.par,0);
   return `
   <div class="card">
-    <h2>${editing ? "코스 수정" : "새 코스 추가"}</h2>
+    <h2>${icon('pin',18)}${editing ? " 코스 수정" : " 새 코스 추가"}</h2>
     <div class="field">
       <label>코스 이름</label>
       <input type="text" id="courseName" placeholder="예: OO 컨트리클럽 서코스" value="${escapeAttr(name)}">
@@ -656,7 +792,7 @@ function renderCourseEdit(){
         </div>`).join("")}
     </div>
     ${editing ? `<div class="field">
-      <button class="btn ghost sm" data-act="saveCourseLocation" data-id="${editing.id}">📍 현재 위치를 이 코스 위치로 저장${editing.location ? " (등록됨 · 다시 저장)" : ""}</button>
+      <button class="btn ghost sm" data-act="saveCourseLocation" data-id="${editing.id}">${icon('pin',15)}현재 위치를 이 코스 위치로 저장${editing.location ? " (등록됨 · 다시 저장)" : ""}</button>
       <p class="muted" style="margin-top:6px;">코스 정문/클럽하우스 근처에서 눌러두면, 다음부터 이 골프장에 도착했을 때 자동으로 코스가 인식돼요.</p>
     </div>` : ""}
     <div class="row" style="margin-top:8px;">
@@ -672,13 +808,13 @@ function renderNewRound(){
   }
   return `
   <div class="card">
-    <h2>새 라운드 시작</h2>
+    <h2>${icon('flag',18)} 새 라운드 시작</h2>
     <div class="field">
       <label>코스 선택</label>
       <select id="courseSelect">
         ${courses.map(c=>`<option value="${c.id}">${escapeHtml(c.name)} (파${coursePar(c)})</option>`).join("")}
       </select>
-      <button class="btn ghost sm" data-act="autoDetectCourse" style="margin-top:6px;">📍 현재 위치로 코스 찾기</button>
+      <button class="btn ghost sm" data-act="autoDetectCourse" style="margin-top:6px;">${icon('pin',15)}현재 위치로 코스 찾기</button>
     </div>
     <div class="field">
       <label>라운드 이름</label>
@@ -733,7 +869,10 @@ function renderRound(){
       <div class="stat-row">
         <div>목표 <b>${stats.target}타</b> (${p.targetMode==='toPar' ? fmtPm(p.targetValue)+' 파대비':'전체타수'})</div>
       </div>
-      ${g ? `<div class="guidance ${g.warn?'warn':''}">${g.text}</div>` : ""}
+      ${g ? `<div class="guidance ${g.warn?'warn':''}">
+        <span class="caddie-avatar ${g.warn?'warn':''}">${icon('caddie',14)}</span>
+        <div><div class="caddie-label">캐디</div>${g.text}</div>
+      </div>` : ""}
       <div class="score-pills">
         ${pillOptions.map(v=>`<div class="score-pill ${curScore===v?'selected':''}" data-act="setScore" data-pid="${p.id}" data-hole="${round.currentHole}" data-val="${v}">${v}</div>`).join("")}
       </div>
@@ -765,13 +904,13 @@ function renderRound(){
     <div class="num">HOLE ${round.currentHole}</div>
     <div class="par">PAR ${curHole.par}</div>
     ${gpsOn
-      ? `<div class="distance-line" id="distanceToGreen">위치 확인 중...</div>
+      ? `<div class="distance-line" id="distanceToGreen"><div class="dist-sub">위치 확인 중...</div></div>
          <div class="gps-row">
-           ${!curHole.green ? `<button class="btn sm" data-act="saveGreenLocation" data-hole="${round.currentHole}">📍 그린 위치 저장</button>` : ""}
-           <button class="btn sm" data-act="openMap">🗺 지도 보기</button>
+           ${!curHole.green ? `<button class="btn sm" data-act="saveGreenLocation" data-hole="${round.currentHole}">${icon('pin',15)}그린 위치 저장</button>` : ""}
+           <button class="btn sm" data-act="openMap">${icon('map',15)}지도 보기</button>
          </div>
-         ${curHole.green ? `<div style="margin-top:6px;"><span class="pill" style="background:rgba(255,255,255,0.16);color:#fff;cursor:pointer;" data-act="clearGreenLocation" data-hole="${round.currentHole}">위치가 부정확한가요? 초기화</span></div>` : ""}`
-      : `<div class="gps-row"><button class="btn sm" data-act="enableGps">📍 GPS 켜고 그린까지 거리 보기</button></div>`
+         ${curHole.green ? `<div class="gps-hint" data-act="clearGreenLocation" data-hole="${round.currentHole}">${icon('refresh',13)}위치가 부정확한가요? 초기화</div>` : ""}`
+      : `<div class="gps-row"><button class="btn sm" data-act="enableGps">${icon('gauge',15)}GPS 켜고 그린까지 거리 보기</button></div>`
     }
     <div class="hole-nav">
       <button class="btn" data-act="prevHole" ${round.currentHole<=1?'disabled':''}>← 이전 홀</button>
@@ -788,7 +927,7 @@ function renderRound(){
   <div class="card">
     <h3>동반자와 공유하기</h3>
     <p class="muted">링크를 전달하면 상대방이 현재까지의 스코어카드를 그대로 불러와 이어서 기록할 수 있어요. (실시간 동기화가 아니라, 갱신할 때마다 새 링크를 다시 공유하는 방식입니다.)</p>
-    <button class="btn secondary block" data-act="shareRound">공유 링크 만들기</button>
+    <button class="btn secondary block" data-act="shareRound">${icon('link',15)}공유 링크 만들기</button>
   </div>
   <div class="row">
     <button class="btn danger grow" data-act="finishRound">라운드 종료</button>
@@ -808,7 +947,7 @@ function renderScorecardTable(round){
       const s = scores[h.number];
       if(s==null) return `<td>-</td>`;
       const cls = s < h.par ? "score-birdie" : s > h.par ? "score-bogey" : "score-par";
-      return `<td class="${cls}">${s}</td>`;
+      return `<td><span class="score-mark ${cls}">${s}</span></td>`;
     }).join("");
     const outSum = out.reduce((sum,h)=> scores[h.number]!=null ? sum+scores[h.number] : sum, 0);
     const inSum = inn.reduce((sum,h)=> scores[h.number]!=null ? sum+scores[h.number] : sum, 0);
@@ -823,7 +962,7 @@ function renderHistory(){
   const leaderboard = buildLeaderboard();
   return `
   <div class="card">
-    <h2>누계 리더보드</h2>
+    <h2>${icon('trophy',18)} 누계 리더보드</h2>
     <p class="muted">완료된 라운드를 기준으로 참가자 이름별 누계를 집계합니다.</p>
     ${leaderboard.length ? `<div class="scroll-x"><table class="leader-table">
       <tr><th>이름</th><th>라운드</th><th>평균타수</th><th>평균 파대비</th><th>평균퍼팅</th><th>베스트</th></tr>
@@ -873,7 +1012,7 @@ function renderRoundDetail(){
     <p class="muted">${escapeHtml(round.courseSnapshot.name)} · 파${coursePar(round.courseSnapshot)} · ${new Date(round.createdAt).toLocaleDateString('ko-KR')}</p>
     <div class="scroll-x">${renderScorecardTable(round)}</div>
     <div class="row" style="margin-top:10px;">
-      <button class="btn secondary block" data-act="shareRoundDetail" data-id="${round.id}">공유 링크 만들기</button>
+      <button class="btn secondary block" data-act="shareRoundDetail" data-id="${round.id}">${icon('link',15)}공유 링크 만들기</button>
     </div>
   </div>
   ${round.players.length >= 2 ? (()=>{
@@ -1128,6 +1267,8 @@ function onSetScore(pid, hole, val){
   round.scores[pid][hole] = val;
   round.updatedAt = Date.now();
   persistRounds();
+  const h = round.courseSnapshot.holes.find(x=>x.number===hole);
+  if(h) toast(caddieScoreRemark(val, h.par));
   render();
 }
 function onSetScoreManual(e){
@@ -1137,7 +1278,11 @@ function onSetScoreManual(e){
   const val = parseInt(el.value,10);
   const round = rounds.find(r=>r.id===state.activeRoundId);
   if(!val || val<1){ delete round.scores[pid][hole]; }
-  else { round.scores[pid][hole] = val; }
+  else {
+    round.scores[pid][hole] = val;
+    const h = round.courseSnapshot.holes.find(x=>x.number===hole);
+    if(h) toast(caddieScoreRemark(val, h.par));
+  }
   round.updatedAt = Date.now();
   persistRounds();
   render();
