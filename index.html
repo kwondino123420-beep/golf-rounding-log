@@ -195,12 +195,17 @@
   .player-card .stat-row{display:flex;gap:14px;margin:9px 0;font-size:12.5px;color:var(--muted);flex-wrap:wrap;}
   .player-card .stat-row b{color:var(--text);font-variant-numeric:tabular-nums;}
   .guidance{
-    display:flex;gap:8px;align-items:flex-start;
+    display:flex;gap:10px;align-items:flex-start;
     font-size:12.5px;background:var(--green-light);color:var(--green-dark);
-    border-radius:var(--radius-sm);padding:9px 11px;margin-bottom:10px;font-weight:600;line-height:1.5;
+    border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;font-weight:600;line-height:1.5;
   }
-  .guidance .icon{margin-top:1px;opacity:.85;}
   .guidance.warn{background:var(--red-light);color:var(--red);}
+  .caddie-avatar{
+    flex:none;width:24px;height:24px;border-radius:50%;background:var(--green-dark);color:#fff;
+    display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  .caddie-avatar.warn{background:var(--red);}
+  .caddie-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;opacity:.65;margin-bottom:2px;}
   .score-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
   .score-pill{
     padding:9px 0;width:45px;text-align:center;border-radius:10px;border:1.5px solid var(--border);
@@ -272,7 +277,7 @@
   }
   .hero-card>*{position:relative;}
   .hero-crest{position:absolute;top:-10px;right:-6px;opacity:.14;transform:rotate(8deg);}
-  .hero-eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:8px;}
+  .hero-eyebrow{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:8px;}
   .hero-card h2{margin:0 0 8px;font-size:21px;font-weight:800;line-height:1.35;letter-spacing:-.01em;}
   .hero-card p{margin:0;color:rgba(255,255,255,0.82);font-size:13px;line-height:1.6;max-width:36ch;}
   .hero-card .btn{background:#fff;color:var(--green-dark);box-shadow:0 4px 14px -4px rgba(0,0,0,0.35);}
@@ -331,7 +336,8 @@ const ICON_PATHS = {
   gauge: '<path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15 15.5 10"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/>',
   bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.45 1 1.2 1 2.1h5c0-.9.4-1.65 1-2.1A6 6 0 0 0 12 3z"/>',
   flagHole: '<ellipse cx="12" cy="20.5" rx="7" ry="1.6"/><path d="M8 20.5V6"/><path d="M8 6l8 3-8 3"/>',
-  refresh: '<path d="M20 11A8 8 0 0 0 6 6.3L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.7l2-2"/><path d="M20 20v-4h-4"/>'
+  refresh: '<path d="M20 11A8 8 0 0 0 6 6.3L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.7l2-2"/><path d="M20 20v-4h-4"/>',
+  caddie: '<circle cx="12" cy="7.5" r="3"/><path d="M5.5 20c0-4 2.9-6.7 6.5-6.7s6.5 2.7 6.5 6.7"/>'
 };
 function icon(name, size){
   size = size || 16;
@@ -420,14 +426,28 @@ function currentHoleGuidance(round, player){
   const curHole = round.courseSnapshot.holes.find(h=>h.number===round.currentHole);
   if(!curHole) return null;
   if(stats.remainingHoles === 0){
-    return { text: `18홀 완료 · 최종 ${stats.strokeSum}타 (파 대비 ${fmtPm(stats.toParSoFar)})`, warn: stats.strokeSum > stats.target };
+    const madeIt = stats.strokeSum <= stats.target;
+    const text = madeIt
+      ? `수고하셨습니다! 최종 ${stats.strokeSum}타(파 대비 ${fmtPm(stats.toParSoFar)})로 목표를 지키셨어요.`
+      : `수고하셨습니다! 최종 ${stats.strokeSum}타(파 대비 ${fmtPm(stats.toParSoFar)})로 라운드를 마쳤어요.`;
+    return { text, warn: !madeIt };
   }
   const avgAllowed = stats.remainingBudget / stats.remainingHoles;
   const recommended = Math.max(curHole.par - 2, Math.round(curHole.par + (stats.remainingToParAllowed / stats.remainingHoles)));
   const warn = stats.remainingToParAllowed < 0;
-  const text = `이번 홀(파${curHole.par}) 권장 ${recommended}타 이내 · 남은 ${stats.remainingHoles}홀 평균 ${avgAllowed.toFixed(1)}타 여유`
-    + (warn ? ` · 목표(${stats.target}타) 대비 파플레이로도 ${Math.abs(stats.remainingToParAllowed)}타 초과` : ` · 목표(${stats.target}타) 대비 ${fmtPm(-stats.remainingToParAllowed)}홀 여유`);
+  const text = warn
+    ? `지금 페이스면 목표가 조금 빠듯해요. 이번 홀(파${curHole.par})은 ${recommended}타 안에 끝내볼까요? 파 플레이로 가도 목표까지 ${Math.abs(stats.remainingToParAllowed)}타 모자라요.`
+    : `이번 홀은 파${curHole.par}, ${recommended}타 안이면 지금 페이스 그대로예요. 남은 ${stats.remainingHoles}홀 평균 ${avgAllowed.toFixed(1)}타 여유 있어요.`;
   return { text, warn, recommended };
+}
+
+function caddieScoreRemark(score, par){
+  const diff = score - par;
+  if(diff <= -2) return "이글이에요! 오늘 대단하시네요.";
+  if(diff === -1) return "버디! 나이스 샷이었어요.";
+  if(diff === 0) return "파 지켰습니다. 이대로 가시죠.";
+  if(diff === 1) return "괜찮아요, 다음 홀에서 만회하시죠.";
+  return "다음 홀엔 편한 홀로 흐름 한번 바꿔봐요.";
 }
 
 function fmtPm(n){
@@ -550,7 +570,7 @@ function updateDistanceWidget(){
   if(!hole || !hole.green){ el.innerHTML = `<div class="dist-sub">이 홀 그린 위치 없음</div>`; return; }
   if(!lastPosition){ el.innerHTML = `<div class="dist-sub">위치 확인 중...</div>`; return; }
   const d = haversineMeters(lastPosition.lat, lastPosition.lng, hole.green.lat, hole.green.lng);
-  el.innerHTML = `<span class="dist-num">${Math.round(d)}</span><span class="dist-unit">m · 그린까지</span>`;
+  el.innerHTML = `<span class="dist-num">${Math.round(d)}</span><span class="dist-unit">m 남았어요</span>`;
 }
 
 function getPutts(round, pid, hole){
@@ -653,9 +673,9 @@ function renderHome(){
   return `
   <div class="hero-card">
     <div class="hero-crest">${icon('flagHole',88)}</div>
-    <div class="hero-eyebrow">라운딩 로그</div>
-    <h2>${timeGreeting()}<br>오늘도 좋은 라운드 되세요</h2>
-    <p class="muted">코스별 파 정보, 홀마다 목표 타수, GPS 그린까지 거리, 동반자와의 스코어 누계까지 — 라운드 내내 곁에 두는 캐디.</p>
+    <div class="hero-eyebrow">${icon('caddie',12)}나의 개인 캐디</div>
+    <h2>${timeGreeting()}<br>오늘 라운드, 제가 함께할게요</h2>
+    <p class="muted">그린까지 거리, 이번 홀에 몇 타를 쳐야 할지, 목표 페이스까지 — 홀마다 알려드리고, 스코어 누계까지 대신 기록해둘게요.</p>
     <button class="btn block" style="margin-top:16px;" data-act="nav" data-view="newRound">${icon('flag',15)}새 라운드 시작</button>
     <div class="row" style="justify-content:center;margin-top:10px;">
       <span class="text-link" data-act="nav" data-view="courses">${icon('pin',13)}코스 관리하기</span>
@@ -849,7 +869,10 @@ function renderRound(){
       <div class="stat-row">
         <div>목표 <b>${stats.target}타</b> (${p.targetMode==='toPar' ? fmtPm(p.targetValue)+' 파대비':'전체타수'})</div>
       </div>
-      ${g ? `<div class="guidance ${g.warn?'warn':''}">${icon(g.warn?'target':'bulb',14)}<span>${g.text}</span></div>` : ""}
+      ${g ? `<div class="guidance ${g.warn?'warn':''}">
+        <span class="caddie-avatar ${g.warn?'warn':''}">${icon('caddie',14)}</span>
+        <div><div class="caddie-label">캐디</div>${g.text}</div>
+      </div>` : ""}
       <div class="score-pills">
         ${pillOptions.map(v=>`<div class="score-pill ${curScore===v?'selected':''}" data-act="setScore" data-pid="${p.id}" data-hole="${round.currentHole}" data-val="${v}">${v}</div>`).join("")}
       </div>
@@ -1244,6 +1267,8 @@ function onSetScore(pid, hole, val){
   round.scores[pid][hole] = val;
   round.updatedAt = Date.now();
   persistRounds();
+  const h = round.courseSnapshot.holes.find(x=>x.number===hole);
+  if(h) toast(caddieScoreRemark(val, h.par));
   render();
 }
 function onSetScoreManual(e){
@@ -1253,7 +1278,11 @@ function onSetScoreManual(e){
   const val = parseInt(el.value,10);
   const round = rounds.find(r=>r.id===state.activeRoundId);
   if(!val || val<1){ delete round.scores[pid][hole]; }
-  else { round.scores[pid][hole] = val; }
+  else {
+    round.scores[pid][hole] = val;
+    const h = round.courseSnapshot.holes.find(x=>x.number===hole);
+    if(h) toast(caddieScoreRemark(val, h.par));
+  }
   round.updatedAt = Date.now();
   persistRounds();
   render();
